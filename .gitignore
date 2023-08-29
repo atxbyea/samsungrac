@@ -1,5 +1,3 @@
 
 .DS_Store
 *.pyc
-/.vs
-/custom_components/climate_ip/ac14k_m.pem

@@ -244,39 +244,51 @@ class ConnectionSamsung2878(Connection):
             self.send_socket_command(command, retries - 1)
 
     def create_connection(self):
-        sslSocket = None
-        cfg = self._cfg
-        self.logger.info("Creating ssl context")
-        sslContext = ssl.SSLContext(ssl.PROTOCOL_TLSv1)
-        self.logger.info("Setting up ciphers")
-        sslContext.set_ciphers("HIGH:!DH:!aNULL")
-        self.logger.info("Setting up verify mode")
-        sslContext.verify_mode = (
-            ssl.CERT_REQUIRED if cfg.cert is not None else ssl.CERT_NONE
-        )
-        if cfg.cert is not None:
-            sslContext.set_ciphers("ALL:@SECLEVEL=0")
-            self.logger.info("Setting up verify location: {}".format(cfg.cert))
-            sslContext.load_verify_locations(cafile=cfg.cert)
-            self.logger.info("Setting up load cert chain: {}".format(cfg.cert))
-            sslContext.load_cert_chain(cfg.cert)
-        else:
-            self.logger.info("Cert is empty, skipping verification")
-        self.logger.info("Wrapping socket")
-        sslSocket = sslContext.wrap_socket(
-            socket(AF_INET, SOCK_STREAM), server_hostname=cfg.host
-        )
-        self.logger.info(
-            "Socket wrapped: {}".format(True if sslSocket is not None else False)
-        )
+        try:
+            self.logger.info(ssl.OPENSSL_VERSION)
+            sslSocket = None
+            cfg = self._cfg
+            self.logger.info("Creating ssl context")
+            sslContext = ssl.SSLContext(ssl.PROTOCOL_TLSv1)
+            
+            self.logger.info("Setting up ciphers")
 
-        if sslSocket is not None:
-            self.logger.info("Connecting with {}:{}".format(cfg.host, cfg.port))
-            sslSocket.connect((cfg.host, cfg.port))
-            # sslSocket.setblocking(0)
-            self.handle_socket_response(sslSocket)
-        else:
-            self.logger.info("Wrapping socket failed")
+            #2023-07-04 lucadjc: after openssl version upgrade, new setting is needed
+            #sslContext.set_ciphers("HIGH:!DH:!aNULL")
+            sslContext.set_ciphers("HIGH:!DH:!aNULL:@SECLEVEL=0")
+            self.logger.info("Setting up verify mode")
+            sslContext.verify_mode = (
+                ssl.CERT_REQUIRED if cfg.cert is not None else ssl.CERT_NONE
+            )
+            if cfg.cert is not None:
+                sslContext.set_ciphers("ALL:@SECLEVEL=0")
+                self.logger.info("Setting up verify location: {}".format(cfg.cert))
+                sslContext.load_verify_locations(cafile=cfg.cert)
+                self.logger.info("Setting up load cert chain: {}".format(cfg.cert))
+                sslContext.load_cert_chain(cfg.cert)
+                
+            else:
+                self.logger.info("Cert is empty, skipping verification")
+                
+            self.logger.info("Wrapping socket")
+            sslSocket = sslContext.wrap_socket(
+                socket(AF_INET, SOCK_STREAM), server_hostname=cfg.host
+            )
+            self.logger.info(
+                "Socket wrapped: {}".format(True if sslSocket is not None else False)
+            )
+
+            if sslSocket is not None:
+                self.logger.info("Connecting with {}:{}".format(cfg.host, cfg.port))
+                sslSocket.connect((cfg.host, cfg.port))
+                # sslSocket.setblocking(0)
+                self.handle_socket_response(sslSocket)
+            else:
+                self.logger.info("Wrapping socket failed")
+        except:
+            self.logger.error(
+                "Error: {}".format(traceback.format_exc())
+            )
 
     @property
     def socket(self):

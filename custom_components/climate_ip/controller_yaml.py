@@ -95,7 +95,7 @@ class YamlController(ClimateController):
         self._retries_count = 0
         self._last_device_state = None
         self._poll = None
-        self._unique_id = None
+        self._unique_id = self._device_id
         self._uniqe_id_prop = None
 
     @property
@@ -258,7 +258,7 @@ class YamlController(ClimateController):
             self._attributes.update(self._state_getter.state_attributes)
             
             #[lucadjc]: added last sync date to send some alerts from hassio in case of connection error
-            self._attributes['last_sync'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            self._attributes['last_sync'] = ''
 
             toJSON = json.dumps(self._state_getter.state_attributes['device_state'])
             try:
@@ -275,6 +275,9 @@ class YamlController(ClimateController):
                 self._attributes['AC_ADD2_OPTIONCODE'] = json_data['AC_ADD2_OPTIONCODE']
                 self._attributes['AC_ADD2_USEDTIME'] = json_data['AC_ADD2_USEDTIME']
                 self._attributes['AC_ADD2_FILTER_USE_TIME'] = json_data['AC_ADD2_FILTER_USE_TIME']
+                
+                if(len(json_data['AC_ADD2_OUT_VERSION']) != 0):
+                    self._attributes['last_sync'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             except:
                 self._logger.info("Error: update_state")
                 
