@@ -16,7 +16,7 @@ from homeassistant.const import (
     CONF_TEMPERATURE_UNIT,
     CONF_TOKEN,
     STATE_ON,
-    UnitOfTemperature.CELSIUS,
+    UnitOfTemperature,
 )
 from homeassistant.helpers.config_validation import PLATFORM_SCHEMA
 

@@ -29,7 +29,7 @@ from homeassistant.components.climate import (
     ATTR_TARGET_TEMP_HIGH,
     ATTR_TARGET_TEMP_LOW,
     DOMAIN,
-    HVACMode.OFF,
+    HVACMode,
     ClimateEntity,
 )
 from homeassistant.components.climate.const import (
@@ -50,8 +50,7 @@ from homeassistant.const import (
     STATE_ON,
     STATE_UNAVAILABLE,
     STATE_UNKNOWN,
-    UnitOfTemperature.CELSIUS,
-    UnitOfTemperature.FAHRENHEIT,
+    UnitOfTemperature,
 )
 from homeassistant.exceptions import PlatformNotReady
 from homeassistant.helpers.config_validation import PLATFORM_SCHEMA

@@ -5,8 +5,7 @@ from homeassistant.const import (
     STATE_OFF,
     STATE_ON,
     STATE_UNKNOWN,
-    UnitOfTemperature.CELSIUS,
-    UnitOfTemperature.FAHRENHEIT,
+    UnitOfTemperature,
 )
 
 # from homeassistant.util.temperature import convert as convert_temperature
