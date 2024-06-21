@@ -64,11 +64,11 @@ def register_controller(controller):
     return controller
 
 
-def create_controller(type, config, logger) -> ClimateController:
+async def create_controller(type, config, logger) -> ClimateController:
     for ctrl in CLIMATE_CONTROLLERS:
         if ctrl.match_type(type):
             c = ctrl(config, logger)
-            if c.initialize():
+            if await c.initialize():
                 return c
             else:
                 logger.error(

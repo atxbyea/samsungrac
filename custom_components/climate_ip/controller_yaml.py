@@ -1,3 +1,4 @@
+import aiofiles
 import json
 import logging
 import os
@@ -42,33 +43,15 @@ CONST_CONTROLLER_TYPE = "yaml"
 CONST_MAX_GET_STATUS_RETRIES = 4
 
 
-class StreamWrapper(object):
-    def __init__(self, stream, token, ip_address, device_id):
-        self.stream = stream
-        self.leftover = ""
-        self.token = token
-        self.ip_address = ip_address
-        self.device_id = device_id
-
-    def read(self, size):
-        data = self.leftover
-        count = len(self.leftover)
-
-        if count < size:
-            chunk = self.stream.read(size)
-
-            if self.token is not None:
-                chunk = chunk.replace("__CLIMATE_IP_TOKEN__", self.token)
-            if self.ip_address is not None:
-                chunk = chunk.replace("__CLIMATE_IP_HOST__", self.ip_address)
-            if self.device_id is not None:
-                chunk = chunk.replace("__DEVICE_ID__", self.device_id)
-
-            data += chunk
-            count += len(chunk)
-
-        self.leftover = data[size:]
-        return data[:size]
+async def StreamWrapper(stream, token, ip_address, device_id):
+    data = ''.join([line async for line in stream])
+    if token is not None:
+        data = data.replace("__CLIMATE_IP_TOKEN__", token)
+    if ip_address is not None:
+        data = data.replace("__CLIMATE_IP_HOST__", ip_address)
+    if device_id is not None:
+        data = data.replace("__DEVICE_ID__", device_id)
+    return data
 
 
 @register_controller
@@ -110,7 +93,7 @@ class YamlController(ClimateController):
     def id(self):
         return CONST_CONTROLLER_TYPE
 
-    def initialize(self):
+    async def initialize(self):
         connection_params = {CONFIG_DEVICE_CONNECTION_PARAMS: {}}
 
         file = self._yaml
@@ -125,10 +108,10 @@ class YamlController(ClimateController):
         if self._device_id is not None:
             self._logger.info("device id: {}".format(self._device_id))
 
-        with open(file, "r") as stream:
+        async with aiofiles.open(file, "r") as stream:
             try:
                 yaml_device = yaml.load(
-                    StreamWrapper(
+                    await StreamWrapper(
                         stream, self._token, self._ip_address, self._device_id
                     ),
                     Loader=yaml.FullLoader,
