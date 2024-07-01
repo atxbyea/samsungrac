@@ -122,7 +122,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     _LOGGER.info("climate_ip: async setup platform")
 
     try:
-        device_controller = create_controller(
+        device_controller = await create_controller(
             config.get(CONF_CONTROLLER), config, _LOGGER
         )
     except Exception as e:
