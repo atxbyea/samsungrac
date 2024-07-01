@@ -7,6 +7,7 @@ At this moment it is configured to work with:
 * Samsung AC units available at port 8888 (new generation, REST API)
 * Samsung AC units available at port 2878 (old generation, socket communication)
 * Samsung MIM-H03 controller (REST API, port 8888)
+* Samsung MIM-H04 controller via Smarthings cloud (REST API)
 
 Support for any unit working with REST API can be easily added via YAML configuration file.
 
@@ -42,6 +43,23 @@ https://github.com/SebuZet/samsungrac
           cert: 'ac14k_m.pem' #set as '' to skip certificate verification
           mac: 'AB:cd:EF:gh:IJ'
           poll: True
+        ```
+    * For Samsung EHS Mono Quiet heat pump with MIM-H04EN controller connected to Smartthings:
+        ```
+        # hot water controller
+        - platform: climate_ip
+          name: Samsung EHS DHW
+          config_file: /config/custom_components/climate_ip/samsung_smartthings_dhw.yaml
+          ip_address: api.smartthings.com
+          device_id: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+          token: !secret smartthings_token
+        # heating controller
+        - platform: climate_ip
+          name: Samsung EHS Heating
+          config_file: /config/custom_components/climate_ip/samsung_smartthings_hvac.yaml
+          ip_address: api.smartthings.com
+          device_id: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+          token: !secret smartthings_token
         ```
 ## Configuration
 1. Configuration parameters:

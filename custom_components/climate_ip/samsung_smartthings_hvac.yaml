@@ -1,0 +1,79 @@
+# Configuration for Samsung EHS Mono Quiet heat pump with MIM-H04EN controller connected to smartthings cloud
+# this definition is for Heating/Cooling function
+device:
+  name: samsung_smartthings_hvac
+  poll: true
+  update_delay: 30
+  unique_id:
+    type: string
+    status_template: __DEVICE_ID__/hvac
+  connection:
+    type: request
+    params:
+      url: 'https://__CLIMATE_IP_HOST__/v1/devices/__DEVICE_ID__/commands'
+      method: POST
+      verify: True
+      headers:
+        authorization: 'Bearer __CLIMATE_IP_TOKEN__'
+        content_type: 'application/json; charset=utf-8'
+  status:
+    type: 'json_status'
+    connection:
+      params:
+        method: GET
+        url: 'https://__CLIMATE_IP_HOST__/v1/devices/__DEVICE_ID__/status/'
+    status_template: '{{ "OK" if (device_state.components.INDOOR.temperatureMeasurement.temperature.value | float) > -100 else "ERROR" }}'
+  operations:
+    hvac: # hvac_mode
+      type: modes
+      values:
+        auto: {}
+        cool: {}
+        heat: {}
+        'off': {} # must be quoted otherwise is interpreted as false
+      status_template: '{{ device_state.components.INDOOR.airConditionerMode.airConditionerMode.value if device_state.components.INDOOR.switch.switch.value == "on" else "off" }}'
+      connection_template: >-
+          {% if value == "off" %}
+          { "json": {"commands": [{"component": "INDOOR", "capability": "switch", "command": "off" }]} }
+          {% else %}
+          { "json": {"commands": [{"component": "INDOOR", "capability": "switch", "command": "on" }, {"component": "INDOOR", "capability": "airConditionerMode", "command": "setAirConditionerMode", "arguments": ["{{value}}"]}]} }
+          {% endif %}
+    power:
+      type: switch
+      values:
+        'on': {}
+        'off': {}
+      status_template: '{{ device_state.components.INDOOR.switch.switch.value }}'
+      connection_template: '{ "json": { "commands": [ {"component": "INDOOR", "capability": "switch", "command": "{{value}}" } ] } }'
+    temperature:
+      type: number
+      status_template: '{{ 50 if device_state.components.INDOOR.airConditionerMode.airConditionerMode.value == "auto" else device_state.components.INDOOR.thermostatCoolingSetpoint.coolingSetpoint.value | float }}'
+      connection_template: '{ "json": { "commands": [ {"component": "INDOOR", "capability": "switch", "command": "off" }, { "component": "INDOOR", "capability": "thermostatCoolingSetpoint", "command": "setCoolingSetpoint", "arguments": [ {{value | int}} ] } ] } }'
+  attributes:
+    current_temperature:
+      type: number
+      status_template: '{{ device_state.components.INDOOR.temperatureMeasurement.temperature.value | float }}'
+    target_temperature:
+      type: number
+      status_template: '{{ device_state.components.INDOOR.thermostatCoolingSetpoint.coolingSetpoint.value | float }}'
+    min_temp:
+      type: number
+      status_template: '{{ device_state.components.INDOOR["custom.thermostatSetpointControl"].minimumSetpoint.value | float if (device_state.components.INDOOR["custom.thermostatSetpointControl"].minimumSetpoint.value | float) > 0 else 25 }}'
+    max_temp:
+      type: number
+      status_template: '{{ device_state.components.INDOOR["custom.thermostatSetpointControl"].maximumSetpoint.value | float if (device_state.components.INDOOR["custom.thermostatSetpointControl"].maximumSetpoint.value | float) > 0 else 65}}'
+    outing_mode:
+      type: string
+      status_template: '{{ device_state.components.main["custom.outingMode"].outingMode.value }}'
+    consumption:
+      type: number
+      status_template: '{{ device_state.components.main.powerConsumptionReport.powerConsumption.value.power | float * 1000}}'
+    energy:
+      type: number
+      status_template: '{{ device_state.components.main.powerConsumptionReport.powerConsumption.value.energy | float / 1000 }}'
+    mode:
+      type: string
+      status_template: '{{ device_state.components.INDOOR.airConditionerMode.airConditionerMode.value | capitalize }}'
+    fsv_settings:
+      type: string
+      status_template: '{{ device_state.components.main["samsungce.ehsFsvSettings"].fsvSettings.value }}'

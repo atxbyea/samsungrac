@@ -1,0 +1,67 @@
+# Configuration for Samsung EHS Mono Quiet heat pump with MIM-H04EN controller connected to smartthings cloud
+# this definition is for DHW (aka Domestic Hot Water) function
+device:
+  name: samsung_smartthing_dhw
+  poll: true
+  update_delay: 30
+  unique_id:
+    type: string
+    status_template: __DEVICE_ID__/dhw
+  connection:
+    type: request
+    params:
+      url: 'https://__CLIMATE_IP_HOST__/v1/devices/__DEVICE_ID__/commands'
+      method: POST
+      verify: True
+      headers:
+        authorization: 'Bearer __CLIMATE_IP_TOKEN__'
+        content_type: 'application/json; charset=utf-8'
+  status:
+    type: 'json_status'
+    connection:
+      params:
+        method: GET
+        url: 'https://__CLIMATE_IP_HOST__/v1/devices/__DEVICE_ID__/status/'
+    status_template: '{{ "OK" if (device_state.components.main.temperatureMeasurement.temperature.value | float) > -100 else "ERROR" }}'
+  operations:
+    hvac: # hvac_mode
+      type: modes
+      values:
+        heat:
+          value: 'on'
+        'off': # must be quoted otherwise is interpreted as false
+          value: 'off'
+      status_template: '{{ "heat" if device_state.components.main.switch.switch.value == "on" else "off" }}'
+      connection_template: '{ "json": { "commands": [ {"component": "main", "capability": "switch", "command": "{{value}}" } ] } }'
+    preset: # preset_mode
+      type: modes
+      values:
+        Eco: {}
+        Std: {}
+        Force: {}
+      status_template: '{{ device_state.components.main.airConditionerMode.airConditionerMode.value | capitalize }}'
+      connection_template: '{ "json": { "commands": [ {"component": "main", "capability": "switch", "command": "off" }, { "component": "main", "capability": "airConditionerMode", "command": "setAirConditionerMode", "arguments": [ "{{value|lower}}" ] } ] } }'
+    power:
+      type: switch
+      values:
+        'on': {}
+        'off': {}
+      status_template: '{{ device_state.components.main.switch.switch.value }}'
+      connection_template: '{ "json": { "commands": [ {"component": "main", "capability": "switch", "command": "{{value}}" } ] } }'
+    temperature:
+      type: number
+      status_template: '{{ device_state.components.main.thermostatCoolingSetpoint.coolingSetpoint.value | float }}'
+      connection_template: '{ "json": { "commands": [ {"component": "main", "capability": "switch", "command": "off" }, { "component": "main", "capability": "thermostatCoolingSetpoint", "command": "setCoolingSetpoint", "arguments": [ {{value | int}} ] } ] } }'
+  attributes:
+    current_temperature:
+      type: number
+      status_template: '{{ device_state.components.main.temperatureMeasurement.temperature.value | float }}'
+    target_temperature:
+      type: number
+      status_template: '{{ device_state.components.main.thermostatCoolingSetpoint.coolingSetpoint.value | float }}'
+    min_temp:
+      type: number
+      status_template: '{{ device_state.components.main["custom.thermostatSetpointControl"].minimumSetpoint.value | float }}'
+    max_temp:
+      type: number
+      status_template: '{{ device_state.components.main["custom.thermostatSetpointControl"].maximumSetpoint.value | float }}'

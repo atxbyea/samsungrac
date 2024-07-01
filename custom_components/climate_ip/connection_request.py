@@ -26,7 +26,8 @@ class SamsungHTTPAdapter(HTTPAdapter):
         super().__init__(*args, **kwargs)
 
     def init_poolmanager(self, *args, **kwargs):
-        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1)
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
         ssl_context.set_ciphers("ALL:@SECLEVEL=0")
         kwargs["ssl_context"] = ssl_context
         return super().init_poolmanager(*args, **kwargs)
