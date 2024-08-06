@@ -215,6 +215,7 @@ class ClimateIP(ClimateEntity):
         self._update_delay = float(
             config.get(CONFIG_DEVICE_UPDATE_DELAY, DEFAULT_UPDATE_DELAY)
         )
+        self._enable_turn_on_off_backwards_compatibility = False
 
     @property
     def controller(self) -> ClimateController:
