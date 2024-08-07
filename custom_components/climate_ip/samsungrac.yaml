@@ -87,10 +87,10 @@ device:
       connection:
         params: { method: 'PUT', url: 'https://__CLIMATE_IP_HOST__:8888/devices/0/wind' }
       values:
-        'Auto': { value : '0', connection: { params: { json: { "speedLevel": 0 } } } }
-        'Low': { value : '1', connection: { params: { json: { "speedLevel": 1 } } } }
-        'Medium': { value : '2', connection: { params: { json: { "speedLevel": 2 } } } }
-        'High': { value : '3', connection: { params: { json: { "speedLevel": 3 } } } }
+        'auto': { value : '0', connection: { params: { json: { "speedLevel": 0 } } } }
+        'low': { value : '1', connection: { params: { json: { "speedLevel": 1 } } } }
+        'medium': { value : '2', connection: { params: { json: { "speedLevel": 2 } } } }
+        'high': { value : '3', connection: { params: { json: { "speedLevel": 3 } } } }
         'Turbo': { value : '4', connection: { params: { json: { "speedLevel": 4 } } } }
       status_template: '{{ device_state.Devices.0.Wind.speedLevel }}'
     fan_max: # fan_max_mode
@@ -98,10 +98,10 @@ device:
       connection:
         params: { method: 'PUT', url: 'https://__CLIMATE_IP_HOST__:8888/devices/0/wind' }
       values:
-        'Auto': { value : '0', connection: { params: { json: { "maxSpeedLevel": 0 } } } }
-        'Low': { value : '1', connection: { params: { json: { "maxSpeedLevel": 1 } } } }
-        'Medium': { value : '2', connection: { params: { json: { "maxSpeedLevel": 2 } } } }
-        'High': { value : '3', connection: { params: { json: { "maxSpeedLevel": 3 } } } }
+        'auto': { value : '0', connection: { params: { json: { "maxSpeedLevel": 0 } } } }
+        'low': { value : '1', connection: { params: { json: { "maxSpeedLevel": 1 } } } }
+        'medium': { value : '2', connection: { params: { json: { "maxSpeedLevel": 2 } } } }
+        'high': { value : '3', connection: { params: { json: { "maxSpeedLevel": 3 } } } }
         'Turbo': { value : '4', connection: { params: { json: { "maxSpeedLevel": 4 } } } }
       status_template: '{{ device_state.Devices.0.Wind.maxSpeedLevel }}'
     swing: # swing_mode
@@ -109,10 +109,10 @@ device:
       connection:
         params: { method: 'PUT', url: 'https://__CLIMATE_IP_HOST__:8888/devices/0/wind' }
       values:
-        'Off': { value : "Fix", connection: { params: { json: { "direction": "Fix" } } } }
-        'Vertical': { value : "Up_And_Low", connection: { params: { json: { "direction": "Up_And_Low" } } } }
-        'Horizontal': { value : "Left_And_Right", connection: { params: { json: { "direction": "Left_And_Right" } } } }
-        'Both': { value : "All", connection: { params: { json: { "direction": "All" } } } }
+        'off': { value : "Fix", connection: { params: { json: { "direction": "Fix" } } } }
+        'vertical': { value : "Up_And_Low", connection: { params: { json: { "direction": "Up_And_Low" } } } }
+        'horizontal': { value : "Left_And_Right", connection: { params: { json: { "direction": "Left_And_Right" } } } }
+        'both': { value : "All", connection: { params: { json: { "direction": "All" } } } }
       status_template: '{{ device_state.Devices.0.Wind.direction }}'
     good_sleep:
       type: number

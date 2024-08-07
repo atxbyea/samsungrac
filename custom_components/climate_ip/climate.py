@@ -95,7 +95,8 @@ DEFAULT_CLIMATE_IP_TEMP_MIN = 8
 DEFAULT_CLIMATE_IP_TEMP_MAX = 30
 DEFAULT_UPDATE_DELAY = 1.5
 SERVICE_SET_CUSTOM_OPERATION = "climate_ip_set_property"
-_LOGGER = logging.getLogger(__name__)
+
+_LOGGER: logging.Logger = logging.getLogger(__package__)
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
@@ -211,10 +212,17 @@ class ClimateIP(ClimateEntity):
 
             if f in self.rac.attributes:
                 features |= SUPPORTED_FEATURES_MAP[f]
+        if 'power' in self.rac.operations:
+            features |= ClimateEntityFeature.TURN_OFF
+            features |= ClimateEntityFeature.TURN_ON
+        
+        _LOGGER.info (f"features - features: {features} - self.rac.attributes: {self.rac.attributes} - self.rac.operations: {self.rac.operations} - SUPPORTED_FEATURES_MAP {SUPPORTED_FEATURES_MAP}")
+        
         self._supported_features = features
         self._update_delay = float(
             config.get(CONFIG_DEVICE_UPDATE_DELAY, DEFAULT_UPDATE_DELAY)
         )
+        self._enable_turn_on_off_backwards_compatibility = False
 
     @property
     def controller(self) -> ClimateController:
