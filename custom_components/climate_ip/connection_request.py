@@ -17,9 +17,21 @@ from .yaml_const import (
     CONFIG_DEVICE_CONNECTION_PARAMS,
 )
 
+_LOGGER: logging.Logger = logging.getLogger(__package__)
+
 CONNECTION_TYPE_REQUEST = "request"
 CONNECTION_TYPE_REQUEST_PRINT = "request_print"
 
+class SamsungHTTPAdapterTLS1(HTTPAdapter):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def init_poolmanager(self, *args, **kwargs):
+        _LOGGER.debug(f"SamsungHTTPAdapterTLS1 - self: {self} - args: {args} - kwargs: {kwargs}")
+        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1)
+        ssl_context.set_ciphers("ALL:@SECLEVEL=0")
+        kwargs["ssl_context"] = ssl_context
+        return super().init_poolmanager(*args, **kwargs)
 
 class SamsungHTTPAdapter(HTTPAdapter):
     def __init__(self, *args, **kwargs):
@@ -120,7 +132,21 @@ class ConnectionRequestBase(Connection):
             warnings.filterwarnings("ignore", category=InsecureRequestWarning)
             with requests.sessions.Session() as session:
                 self.logger.info("Setting up HTTP Adapter and ssl context")
-                session.mount("https://", SamsungHTTPAdapter())
+                
+                _LOGGER.debug(f"execute_internal - self: {self} - params: {self._params} - template: {template} - value: {value} - device_state: {device_state}")
+
+                tls_version = 'auto'
+                # if there is no cert then tls tl_version=auto - otherwise if there is cert tls_versiona=1 - maybe there is a better way
+                if 'cert' in self._params :
+                    tls_version = '1'
+                    
+                _LOGGER.debug(f"execute_internal - tls_version: {tls_version}")
+                
+                if tls_version == 'auto':
+                    session.mount("https://", SamsungHTTPAdapter())
+                else:
+                    session.mount("https://", SamsungHTTPAdapterTLS1())
+                    
                 self.logger.info(self._params)
 
                 try:
