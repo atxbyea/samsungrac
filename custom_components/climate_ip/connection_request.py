@@ -144,7 +144,7 @@ class ConnectionRequestBase(Connection):
                 
                 if tls_version == 'auto':
                     session.mount("https://", SamsungHTTPAdapter())
-                else
+                else:
                     session.mount("https://", SamsungHTTPAdapterTLS1())
                     
                 self.logger.info(self._params)
