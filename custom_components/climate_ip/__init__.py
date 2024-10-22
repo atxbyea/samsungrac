@@ -10,3 +10,5 @@ from .properties import (
     TemperatureOperation,
 )
 from .samsung_2878 import ConnectionSamsung2878
+
+from .connection_request_tls_auto import ConnectionRequestTlsAuto

@@ -8,7 +8,7 @@ device:
     type: string
     status_template: __DEVICE_ID__/hvac
   connection:
-    type: request
+    type: request_tls_auto
     params:
       url: 'https://__CLIMATE_IP_HOST__/v1/devices/__DEVICE_ID__/commands'
       method: POST
