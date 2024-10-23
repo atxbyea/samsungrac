@@ -194,13 +194,13 @@ class ConnectionRequestBase(Connection):
 @register_connection
 class ConnectionRequestTlsAuto(ConnectionRequestBase):
     def __init__(self, hass_config, logger):
-        super(ConnectionRequest, self).__init__(hass_config, logger)
+        super(ConnectionRequestTlsAuto, self).__init__(hass_config, logger)
 
     @staticmethod
     def match_type(type):
         return type == CONNECTION_TYPE_REQUEST
 
     def create_updated(self, node):
-        c = ConnectionRequest(None, self.logger)
+        c = ConnectionRequestTlsAuto(None, self.logger)
         c.load_from_yaml(node, self)
         return c
