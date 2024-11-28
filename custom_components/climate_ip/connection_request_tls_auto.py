@@ -19,15 +19,16 @@ from .yaml_const import (
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
-CONNECTION_TYPE_REQUEST = "request"
-CONNECTION_TYPE_REQUEST_PRINT = "request_print"
+CONNECTION_TYPE_REQUEST = "request_tls_auto"
+CONNECTION_TYPE_REQUEST_PRINT = "request_tls_auto_print"
 
 class SamsungHTTPAdapter(HTTPAdapter):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
     def init_poolmanager(self, *args, **kwargs):
-        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1)
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
         ssl_context.set_ciphers("ALL:@SECLEVEL=0")
         kwargs["ssl_context"] = ssl_context
         return super().init_poolmanager(*args, **kwargs)
@@ -122,8 +123,9 @@ class ConnectionRequestBase(Connection):
                 self.logger.info("Setting up HTTP Adapter and ssl context")
                 
                 _LOGGER.debug(f"execute_internal - self: {self} - params: {self._params} - template: {template} - value: {value} - device_state: {device_state}")
-                
+
                 session.mount("https://", SamsungHTTPAdapter())
+                    
                 self.logger.info(self._params)
 
                 try:
@@ -190,106 +192,15 @@ class ConnectionRequestBase(Connection):
 
 
 @register_connection
-class ConnectionRequest(ConnectionRequestBase):
+class ConnectionRequestTlsAuto(ConnectionRequestBase):
     def __init__(self, hass_config, logger):
-        super(ConnectionRequest, self).__init__(hass_config, logger)
+        super(ConnectionRequestTlsAuto, self).__init__(hass_config, logger)
 
     @staticmethod
     def match_type(type):
         return type == CONNECTION_TYPE_REQUEST
 
     def create_updated(self, node):
-        c = ConnectionRequest(None, self.logger)
+        c = ConnectionRequestTlsAuto(None, self.logger)
         c.load_from_yaml(node, self)
         return c
-
-
-test_json = {
-    "Devices": [
-        {
-            "Alarms": [
-                {
-                    "alarmType": "Device",
-                    "code": "FilterAlarm",
-                    "id": "0",
-                    "triggeredTime": "2019-02-25T08:46:01",
-                }
-            ],
-            "ConfigurationLink": {"href": "/devices/0/configuration"},
-            "Diagnosis": {"diagnosisStart": "Ready"},
-            "EnergyConsumption": {"saveLocation": "/files/usage.db"},
-            "InformationLink": {"href": "/devices/0/information"},
-            "Mode": {
-                "modes": ["Auto"],
-                "options": [
-                    "Comode_Off",
-                    "Sleep_0",
-                    "Autoclean_Off",
-                    "Spi_Off",
-                    "FilterCleanAlarm_0",
-                    "OutdoorTemp_63",
-                    "CoolCapa_35",
-                    "WarmCapa_40",
-                    "UsagesDB_254",
-                    "FilterTime_10000",
-                    "OptionCode_54458",
-                    "UpdateAllow_0",
-                    "FilterAlarmTime_500",
-                    "Function_15",
-                    "Volume_100",
-                ],
-                "supportedModes": ["Cool", "Dry", "Wind", "Auto"],
-            },
-            "Operation": {"power": "Off"},
-            "Temperatures": [
-                {
-                    "current": 22.0,
-                    "desired": 25.0,
-                    "id": "0",
-                    "maximum": 30,
-                    "minimum": 16,
-                    "unit": "Celsius",
-                }
-            ],
-            "Wind": {"direction": "Fix", "maxSpeedLevel": 4, "speedLevel": 0},
-            "connected": True,
-            "description": "TP6X_RAC_16K",
-            "id": "0",
-            "name": "RAC",
-            "resources": [
-                "Alarms",
-                "Configuration",
-                "Diagnosis",
-                "EnergyConsumption",
-                "Information",
-                "Mode",
-                "Operation",
-                "Temperatures",
-                "Wind",
-            ],
-            "type": "Air_Conditioner",
-            "uuid": "00000000-0000-0000-0000-000000000000",
-        }
-    ]
-}
-
-
-@register_connection
-class ConnectionRequestPrint(ConnectionRequestBase):
-    def __init__(self, hass_config, logger):
-        super(ConnectionRequestPrint, self).__init__(hass_config, logger)
-
-    @staticmethod
-    def match_type(type):
-        return type == CONNECTION_TYPE_REQUEST_PRINT
-
-    def create_updated(self, node):
-        c = ConnectionRequestPrint(None, self.logger)
-        c.load_from_yaml(node, self)
-        return c
-
-    def execute_internal(self, template, value, device_state) -> (json, bool, int):
-        self.logger.info(
-            "ConnectionRequestPrint, execute with params: {}".format(self._params)
-        )
-        return (test_json, True, 200)
