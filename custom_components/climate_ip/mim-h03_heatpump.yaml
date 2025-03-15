@@ -25,7 +25,7 @@ device:
         params: { method: 'PUT', url: 'https://__CLIMATE_IP_HOST__:8888/devices/__DEVICE_ID__/' }
       values:
         cool: { value : 'Opmode_Cool', connection: { params: { json: { "Device" : { "Operation": { "power" : "On" }, "Mode": { "modes": ["Opmode_Cool"] } } } } } }
-        cool: { value : 'Opmode_Heat', connection: { params: { json: { "Device" : { "Operation": { "power" : "On" }, "Mode": { "modes": ["Opmode_Heat"] } } } } } }
+        heat: { value : 'Opmode_Heat', connection: { params: { json: { "Device" : { "Operation": { "power" : "On" }, "Mode": { "modes": ["Opmode_Heat"] } } } } } }
         'off': { value: 'Off', connection: { params: { json: { "Device" : { "Operation": { "power" : "Off" } } } } } }
         auto: { value : 'Opmode_Auto', connection: { params: { json: { "Device" : { "Operation": { "power" : "On" }, "Mode": { "modes": ["Opmode_Auto"] } } } } } }
         heat_cool: { value : 'Opmode_Auto', connection: { params: { json: { "Device" : { "Operation": { "power" : "On" }, "Mode": { "modes": ["Opmode_Auto"] } } } } } }
