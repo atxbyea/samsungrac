@@ -11,9 +11,7 @@
   "issue_tracker": "https://github.com/atxbyea/samsungrac/issues",
   "requirements": [
     "requests>=2.21.0",
-    "xmljson>=0.2.0"
+    "xmltodict>=0.13.0"
   ],
   "version": "3.5.2"
 }
-
-  

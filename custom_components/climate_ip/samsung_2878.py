@@ -5,6 +5,9 @@ import re
 import ssl
 import sys
 import traceback
+
+import xmltodict
+
 from socket import *
 
 from homeassistant.const import CONF_IP_ADDRESS, CONF_MAC, CONF_PORT, CONF_TOKEN
@@ -179,26 +182,41 @@ class ConnectionSamsung2878(Connection):
         self.logger.info("Status request sent")
 
     def handle_response_status_update(self, sslSocket, response):
+        """
+        Handles status updates using xmltodict for robust parsing.
+        """
         self.logger.info("handle_response_status_update")
-
-        attrs = response.split("><")
-        for attr in attrs:
-            f = re.match('Attr ID="(.*)" Value="(.*)"', attr)
-            self.logger.info("Attr: {0}".format(f))
-
-            if f:
-                k, v = f.group(1, 2)
-                self._device_status[k] = v
+        try:
+            data = xmltodict.parse(response)
+            # Assuming a structure like <Update><Attr .../></Update>
+            update_attrs = data.get('Update', {}).get('Attr', [])
+            if not isinstance(update_attrs, list):
+                update_attrs = [update_attrs]  # Handle the case of a single attribute
+            for attr in update_attrs:
+                if '@ID' in attr and '@Value' in attr:
+                    self._device_status[attr['@ID']] = attr['@Value']
+        except Exception as e:
+            self.logger.error(f"Error parsing XML status update with xmltodict: {e}")
 
     def handle_response_device_state(self, sslSocket, response):
-        attrs = response.split("><")
-        device_status = {}
-        for attr in attrs:
-            f = re.match('Attr ID="(.*)" Type=".*" Value="(.*)"', attr)
-            if f:
-                k, v = f.group(1, 2)
-                device_status[k] = v
-        self._device_status = device_status
+        """
+        Handles the device state using xmltodict for robust parsing.
+        """
+        try:
+            data = xmltodict.parse(response)
+            device_state = data.get('Response', {}).get('DeviceState', {}).get('Device', {})
+            if device_state and 'Attr' in device_state:
+                attrs = device_state['Attr']
+                if not isinstance(attrs, list):
+                    attrs = [attrs]  # Handle the case of a single attribute
+                
+                device_status = {}
+                for attr in attrs:
+                    device_status[attr['@ID']] = attr['@Value']
+                self._device_status = device_status
+        except Exception as e:
+            self.logger.error(f"Error parsing XML response with xmltodict: {e}")
+
 
     def handle_socket_response(self, sslSocket):
         reply = self.read_line_from_socket(sslSocket)
