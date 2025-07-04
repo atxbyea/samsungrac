@@ -6,6 +6,7 @@ import asyncio
 import functools as ft
 import json
 import logging
+import time
 from datetime import timedelta
 
 import homeassistant.helpers.config_validation as cv
@@ -203,6 +204,10 @@ class ClimateIP(ClimateEntity):
             config.get(CONFIG_DEVICE_UPDATE_DELAY, DEFAULT_UPDATE_DELAY)
         )
         self._enable_turn_on_off_backwards_compatibility = False
+        
+        # Attributes for robust optimistic mode
+        self._last_optimistic_update_time = 0
+        self._optimistic_debounce_seconds = 10 # Ignore polls for 10s after an optimistic update
 
     @property
     def should_poll(self):
@@ -216,18 +221,31 @@ class ClimateIP(ClimateEntity):
         Asynchronously update the state of the device from the controller.
         This method is called by Home Assistant for polling.
         """
+        # Debounce polling if an optimistic update happened recently
+        if time.time() - self._last_optimistic_update_time < self._optimistic_debounce_seconds:
+            _LOGGER.info("Skipping poll to allow optimistic update to settle.")
+            return
+            
         _LOGGER.info("Asynchronously updating state for %s", self.name)
         await self.rac.async_update_state()
 
     async def _send_and_verify(self, prop, value):
-        """Send a command and then force a state refresh to verify."""
-        await self.rac.async_set_property(prop, value)
-        # Wait a moment for the device to process the command
-        await asyncio.sleep(self._update_delay)
-        # Force a refresh to get the confirmed state from the device
-        await self.async_update()
-        # Update the UI
+        """
+        Send a command and optimistically update the state immediately.
+        The actual network communication runs in the background.
+        """
+        # 1. Optimistically update the controller's internal state.
+        if prop in self.rac._operations:
+            self.rac._operations[prop]._value = value
+        
+        # 2. Record the time of this optimistic update and update the UI.
+        self._last_optimistic_update_time = time.time()
         self.async_write_ha_state()
+
+        # 3. Create the network task and let it run in the background.
+        self.hass.async_create_task(
+            self.rac.async_set_property(prop, value)
+        )
 
     async def async_set_temperature(self, **kwargs):
         """Asynchronously set new target temperature and verify."""
