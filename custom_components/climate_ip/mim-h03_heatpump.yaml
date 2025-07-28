@@ -22,15 +22,15 @@ device:
     hvac: # hvac_mode
       type: modes
       connection:
-        params: { method: 'PUT', url: 'https://__CLIMATE_IP_HOST__:8888/devices/__DEVICE_ID__/mode' }
+        params: { method: 'PUT', url: 'https://__CLIMATE_IP_HOST__:8888/devices/__DEVICE_ID__/' }
       values:
-        cool: { value : 'Opmode_Cool', connection: { params: { json: { "Operation": { "power" : "On" }, "Mode": { "modes": ["Opmode_Cool"] } } } } }
-        heat: { value : 'Opmode_Heat', connection: { params: { json: { "Operation": { "power" : "On" }, "Mode": { "modes": ["Opmode_Heat"] } } } } }
-        'off': { value: 'Off', connection: { params: { json: { "Operation": { "power" : "Off" } } } } }
-        auto: { value : 'Opmode_Auto', connection: { params: { json: { "Operation": { "power" : "On" }, "Mode": { "modes": ["Opmode_Auto"] } } } } }
-        heat_cool: { value : 'Opmode_Auto', connection: { params: { json: { "Operation": { "power" : "On" }, "Mode": { "modes": ["Opmode_Auto"] } } } } }
-        fan_only: { value : 'Opmode_Fan', connection: { params: { json: { "Operation": { "power" : "On" }, "Mode": { "modes": ["Opmode_Fan"] } } } } }
-        dry: { value : 'Opmode_Dry', connection: { params: { json: { "Operation": { "power" : "On" }, "Mode": { "modes": ["Opmode_Dry"] } } } } }
+        cool: { value : 'Opmode_Cool', connection: { params: { json: { "Device" : { "Operation": { "power" : "On" }, "Mode": { "modes": ["Opmode_Cool"] } } } } } }
+        heat: { value : 'Opmode_Heat', connection: { params: { json: { "Device" : { "Operation": { "power" : "On" }, "Mode": { "modes": ["Opmode_Heat"] } } } } } }
+        'off': { value: 'Off', connection: { params: { json: { "Device" : { "Operation": { "power" : "Off" } } } } } }
+        auto: { value : 'Opmode_Auto', connection: { params: { json: { "Device" : { "Operation": { "power" : "On" }, "Mode": { "modes": ["Opmode_Auto"] } } } } } }
+        heat_cool: { value : 'Opmode_Auto', connection: { params: { json: { "Device" : { "Operation": { "power" : "On" }, "Mode": { "modes": ["Opmode_Auto"] } } } } } }
+        fan_only: { value : 'Opmode_Fan', connection: { params: { json: { "Device" : { "Operation": { "power" : "On" }, "Mode": { "modes": ["Opmode_Fan"] } } } } } }
+        dry: { value : 'Opmode_Dry', connection: { params: { json: { "Device" : { "Operation": { "power" : "On" }, "Mode": { "modes": ["Opmode_Dry"] } } } } } }
       status_template: "{% if device_state.Operation.power == 'Off' -%}Off{%- elif device_state.Operation.power == 'On' -%}{{ device_state.Mode.modes.0 }}{%- endif %}"
     power:
       type: switch
