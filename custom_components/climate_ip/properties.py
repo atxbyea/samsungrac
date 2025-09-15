@@ -2,8 +2,6 @@ import json
 
 import homeassistant.helpers.config_validation as cv
 from homeassistant.const import STATE_OFF, STATE_ON, STATE_UNKNOWN, UnitOfTemperature
-
-# from homeassistant.util.temperature import convert as convert_temperature
 from homeassistant.util.unit_conversion import TemperatureConverter
 
 from .connection import Connection
@@ -39,75 +37,6 @@ UNIT_MAP = {
     "Fahrenheit": UnitOfTemperature.FAHRENHEIT,
     UnitOfTemperature.CELSIUS: UnitOfTemperature.CELSIUS,
     UnitOfTemperature.FAHRENHEIT: UnitOfTemperature.FAHRENHEIT,
-}
-
-test_json = {
-    "Devices": [
-        {
-            "Alarms": [
-                {
-                    "alarmType": "Device",
-                    "code": "FilterAlarm",
-                    "id": "0",
-                    "triggeredTime": "2019-02-25T08:46:01",
-                }
-            ],
-            "ConfigurationLink": {"href": "/devices/0/configuration"},
-            "Diagnosis": {"diagnosisStart": "Ready"},
-            "EnergyConsumption": {"saveLocation": "/files/usage.db"},
-            "InformationLink": {"href": "/devices/0/information"},
-            "Mode": {
-                "modes": ["Auto"],
-                "options": [
-                    "Comode_Off",
-                    "Sleep_0",
-                    "Autoclean_Off",
-                    "Spi_Off",
-                    "FilterCleanAlarm_0",
-                    "OutdoorTemp_63",
-                    "CoolCapa_35",
-                    "WarmCapa_40",
-                    "UsagesDB_254",
-                    "FilterTime_10000",
-                    "OptionCode_54458",
-                    "UpdateAllow_0",
-                    "FilterAlarmTime_500",
-                    "Function_15",
-                    "Volume_100",
-                ],
-                "supportedModes": ["Cool", "Dry", "Wind", "Auto"],
-            },
-            "Operation": {"power": "Off"},
-            "Temperatures": [
-                {
-                    "current": 22.0,
-                    "desired": 25.0,
-                    "id": "0",
-                    "maximum": 30,
-                    "minimum": 16,
-                    "unit": "Celsius",
-                }
-            ],
-            "Wind": {"direction": "Fix", "maxSpeedLevel": 4, "speedLevel": 0},
-            "connected": True,
-            "description": "TP6X_RAC_16K",
-            "id": "0",
-            "name": "RAC",
-            "resources": [
-                "Alarms",
-                "Configuration",
-                "Diagnosis",
-                "EnergyConsumption",
-                "Information",
-                "Mode",
-                "Operation",
-                "Temperatures",
-                "Wind",
-            ],
-            "type": "Air_Conditioner",
-            "uuid": "C0972729-EB73-0000-0000-000000000000",
-        }
-    ]
 }
 
 
@@ -160,7 +89,7 @@ class DeviceProperty:
 
     def is_valid(self, device_state):
         self._device_state = device_state
-        if self.validation_template == None or device_state == None:
+        if self.validation_template is None or device_state is None:
             return True
         else:
             try:
@@ -168,7 +97,6 @@ class DeviceProperty:
                 return str(v).lower() == "valid"
             except:
                 return False
-            return False
 
     @property
     def config_validation_type(self):
@@ -222,12 +150,19 @@ class DeviceProperty:
         """Convert device state value to HASS."""
         return dev_value
 
-    def update_state(self, device_state, debug):
-        """Update property from device state and return current value."""
+    async def async_update_state(self, device_state, debug):
+        """
+        Update property from device state and return current value.
+        This method is now async.
+        """
         self._device_state = device_state
         v = STATE_UNKNOWN
         if self.status_template is not None and device_state is not None:
-            v = self.status_template.render(device_state=device_state)
+            try:
+                v = self.status_template.render(device_state=device_state)
+            except Exception as e:
+                # Log template rendering error if needed
+                pass
         if v is not STATE_UNKNOWN:
             self._value = self.convert_dev_to_hass(v)
         return self.value
@@ -249,23 +184,34 @@ class GetJsonStatus(DeviceProperty):
     def match_type(type):
         return type == STATUS_GETTER_JSON
 
-    def update_state(self, device_state, debug):
+    async def async_update_state(self, device_state, debug):
+        """
+        Fetches the device state asynchronously.
+        """
         self._device_state = device_state
-        device_state = self.get_connection(None).execute(
+        # The execute method is now async, so we must await it
+        device_state_result = await self.get_connection(None).execute(
             self.connection_template, None, device_state
         )
-        self._value = device_state
-        self._json_status = device_state
-        if device_state is not None:
-            self._attrs = {"device_state": json.dumps(device_state)}
+        
+        self._value = device_state_result
+        self._json_status = device_state_result
+        
+        if device_state_result is not None:
+            self._attrs = {"device_state": json.dumps(device_state_result)}
             if self.status_template is not None:
                 try:
-                    v = self.status_template.render(device_state=device_state)
-                    v = v.replace("'", '"')
-                    v = v.replace("True", '"True"')
-                    self._value = json.loads(v)
-                except:
-                    pass  # do nothing
+                    v = self.status_template.render(device_state=device_state_result)
+                    # Handle different potential return types from templates
+                    if isinstance(v, str):
+                        v = v.replace("'", '"')
+                        v = v.replace("True", '"True"')
+                        self._value = json.loads(v)
+                    else:
+                        self._value = v
+                except Exception:
+                    # Template might not render to JSON, which is fine
+                    pass
         else:
             self._attrs = {"device_state": None}
 
@@ -281,9 +227,11 @@ class DeviceOperation(DeviceProperty):
     def __init__(self, name, connection):
         super(DeviceOperation, self).__init__(name, connection)
 
-    def set_value(self, v):
-        """Set device property value."""
-        resp = self.get_connection(v).execute(
+    async def async_set_value(self, v):
+        """
+        Set device property value asynchronously.
+        """
+        resp = await self.get_connection(v).execute(
             self.connection_template, self.convert_hass_to_dev(v), self._device_state
         )
         return resp is not None
@@ -409,12 +357,10 @@ class BasicNumericOperation(DeviceOperation):
 
     @property
     def value(self):
-        f = 0
         try:
-            f = float(self._value)
-        except:
-            f = None
-        return f
+            return float(self._value)
+        except (ValueError, TypeError):
+            return None
 
     @property
     def config_validation_type(self):
@@ -473,7 +419,6 @@ class TemperatureOperation(BasicNumericOperation):
     def load_from_yaml(self, node):
         from jinja2 import Template
 
-        """Load configuration from yaml node dictionary. Return True if successful False otherwise."""
         if not super(TemperatureOperation, self).load_from_yaml(node):
             return False
 
@@ -483,16 +428,16 @@ class TemperatureOperation(BasicNumericOperation):
             )
         return True
 
-    def update_state(self, device_state, debug):
+    async def async_update_state(self, device_state, debug):
         if self._unit_template is not None and device_state is not None:
             try:
                 unit = self._unit_template.render(device_state=device_state)
                 if unit in UNIT_MAP:
                     self._unit = UNIT_MAP[unit]
             except:
-                pass  # skip temperature unit rendering
+                pass
 
-        return super(TemperatureOperation, self).update_state(device_state, debug)
+        return await super().async_update_state(device_state, debug)
 
     def convert_dev_to_hass(self, dev_value):
         """Convert device state value to HASS."""
@@ -502,7 +447,6 @@ class TemperatureOperation(BasicNumericOperation):
 
     def convert_hass_to_dev(self, hass_value):
         v = hass_value
-        """Convert HASS state value to device state."""
         if self._min is not None and hass_value < self._min:
             v = self._min
         if self._max is not None and hass_value > self._max:

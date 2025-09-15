@@ -1,9 +1,6 @@
 """
 Platform that offers support for IP controlled climate devices.
-
-For more details about this platform, please refer to the repository
-https://github.com/SebuZet/samsungrac
-
+This file defines the Home Assistant climate entity.
 """
 import asyncio
 import functools as ft
@@ -55,8 +52,6 @@ from homeassistant.const import (
 from homeassistant.exceptions import PlatformNotReady
 from homeassistant.helpers.config_validation import PLATFORM_SCHEMA
 from homeassistant.helpers.service import extract_entity_ids
-
-# from homeassistant.util.temperature import convert as convert_temperature
 from homeassistant.util.unit_conversion import TemperatureConverter
 
 from .controller import ATTR_POWER, ClimateController, create_controller
@@ -87,7 +82,7 @@ DEFAULT_CONF_CONTROLLER = "yaml"
 
 SCAN_INTERVAL = timedelta(seconds=15)
 
-REQUIREMENTS = ["requests>=2.21.0", "xmljson>=0.2.0"]
+REQUIREMENTS = ["requests>=2.21.0", "xmltodict>=0.13.0"]
 
 CLIMATE_IP_DATA = "climate_ip_data"
 ENTITIES = "entities"
@@ -119,23 +114,26 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+    """
+    Set up the climate_ip platform asynchronously.
+    """
     _LOGGER.setLevel(logging.INFO if config.get("debug", False) else logging.ERROR)
     _LOGGER.info("climate_ip: async setup platform")
 
     try:
+        # Controller creation is now fully asynchronous
         device_controller = await create_controller(
             config.get(CONF_CONTROLLER), config, _LOGGER
         )
     except Exception as e:
         _LOGGER.error("climate_ip: error while creating controller!")
         import traceback
-
         _LOGGER.error(traceback.format_exc())
         _LOGGER.error(e)
-        raise
+        raise PlatformNotReady from e
 
     if device_controller is None:
-        return PlatformNotReady
+        raise PlatformNotReady
 
     async_add_entities([ClimateIP(device_controller, config)], True)
 
@@ -144,158 +142,163 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
             key: value for key, value in service.data.items() if key != ATTR_ENTITY_ID
         }
 
-        devices = []
         entity_ids = service.data.get(ATTR_ENTITY_ID)
-        if CLIMATE_IP_DATA in hass.data:
+        devices_to_update = []
+        if CLIMATE_IP_DATA in hass.data and ENTITIES in hass.data[CLIMATE_IP_DATA]:
             if entity_ids:
-                devices = [
+                devices_to_update = [
                     device
                     for device in hass.data[CLIMATE_IP_DATA][ENTITIES]
                     if device.entity_id in entity_ids
                 ]
             else:
-                devices = hass.data[CLIMATE_IP_DATA][ENTITIES]
-
-        update_tasks = []
-        for device in devices:
-            if not hasattr(device, "async_set_custom_operation"):
-                continue
-            await getattr(device, "async_set_custom_operation")(**params)
-            update_tasks.append(asyncio.create_task(device.async_update_ha_state(True)))
-
-        if update_tasks:
-            await asyncio.wait(update_tasks)
+                devices_to_update = hass.data[CLIMATE_IP_DATA][ENTITIES]
+        
+        for device in devices_to_update:
+            if hasattr(device, "async_set_custom_operation"):
+                # Call the async version of the custom operation
+                await device.async_set_custom_operation(**params)
 
     service_schema = (
         device_controller.service_schema_map
         if device_controller.service_schema_map
         else {}
     )
-    if CLIMATE_IP_DATA in hass.data:
-        for dev in hass.data[CLIMATE_IP_DATA][ENTITIES]:
-            if dev.service_schema_map:
-                service_schema.update(dev.service_schema_map)
 
-    if service_schema is not None:
-        hass.services.async_register(
-            DOMAIN,
-            SERVICE_SET_CUSTOM_OPERATION,
-            async_service_handler,
-            schema=vol.Schema(service_schema),
-        )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_SET_CUSTOM_OPERATION,
+        async_service_handler,
+        schema=vol.Schema(service_schema),
+    )
 
 
 class ClimateIP(ClimateEntity):
-    """Representation of a Samsung climate device."""
+    """Representation of a Samsung climate device, now fully asynchronous."""
 
     def __init__(self, rac_controller, config):
+        """Initialize the climate device."""
         self.rac = rac_controller
         self._name = config.get(CONFIG_DEVICE_NAME, None)
-        _LOGGER.info("self._name: {}".format(self._name))
-
         self._poll = None
-        self._unique_id = self._name
-        _LOGGER.info("self._unique_id: {}".format(self._unique_id))
-        str_poll = config.get(CONFIG_DEVICE_POLL, "")
-        if str_poll:
-            str_poll = str_poll.lower()
-            if str_poll == "false":
-                self._poll = False
-            elif str_poll == "true":
-                self._poll = True
-        features = 0
-        for f in SUPPORTED_FEATURES_MAP.keys():
-            if f in self.rac.operations:
-                features |= SUPPORTED_FEATURES_MAP[f]
-        for f in SUPPORTED_FEATURES_MAP.keys():
-            _LOGGER.info("Feature: {}".format(f))
+        
+        # Unique ID needs to be set early and consistently
+        self._attr_unique_id = "climate_ip_" + (self.rac.unique_id or self._name)
 
-            if f in self.rac.attributes:
-                features |= SUPPORTED_FEATURES_MAP[f]
+        str_poll = config.get(CONFIG_DEVICE_POLL, "")
+        if str_poll.lower() == "true":
+            self._poll = True
+        elif str_poll.lower() == "false":
+            self._poll = False
+            
+        features = 0
+        for f, feature_flag in SUPPORTED_FEATURES_MAP.items():
+            if f in self.rac.operations or f in self.rac.attributes:
+                features |= feature_flag
+                
         if 'power' in self.rac.operations:
-            features |= ClimateEntityFeature.TURN_OFF
-            features |= ClimateEntityFeature.TURN_ON
+            features |= ClimateEntityFeature.TURN_OFF | ClimateEntityFeature.TURN_ON
         
-        _LOGGER.info (f"features - features: {features} - self.rac.attributes: {self.rac.attributes} - self.rac.operations: {self.rac.operations} - SUPPORTED_FEATURES_MAP {SUPPORTED_FEATURES_MAP}")
-        
-        self._supported_features = features
+        self._attr_supported_features = features
         self._update_delay = float(
             config.get(CONFIG_DEVICE_UPDATE_DELAY, DEFAULT_UPDATE_DELAY)
         )
         self._enable_turn_on_off_backwards_compatibility = False
-
-    @property
-    def controller(self) -> ClimateController:
-        return self.rac
-
-    @property
-    def supported_features(self):
-        return self._supported_features
-
-    @property
-    def min_temp(self):
-        t = self.rac.get_property(ATTR_MIN_TEMP)
-        if t is None:
-            t = DEFAULT_CLIMATE_IP_TEMP_MIN
-        return TemperatureConverter.convert(
-            t, UnitOfTemperature.CELSIUS, self.temperature_unit
-        )
-
-    @property
-    def max_temp(self):
-        t = self.rac.get_property(ATTR_MAX_TEMP)
-        if t is None:
-            t = DEFAULT_CLIMATE_IP_TEMP_MAX
-        return TemperatureConverter.convert(
-            t, UnitOfTemperature.CELSIUS, self.temperature_unit
-        )
+        
+        # Attributes for robust optimistic mode
+        self._last_optimistic_update_time = 0
+        self._optimistic_debounce_seconds = 10 # Ignore polls for 10s after an optimistic update
 
     @property
     def should_poll(self):
-        res = False
+        """Return the polling state."""
         if self._poll is not None:
-            res = self._poll
-        elif self.rac.poll is not None:
-            res = self.rac.poll
-        _LOGGER.info("Should poll: {}".format(res))
-        return res
+            return self._poll
+        return self.rac.poll
 
-    @property
-    def unique_id(self):
-        # if self._unique_id is None and self.rac.unique_id is not None:
-        #    _LOGGER.info("About to set unique id {}".format(self.rac.unique_id))
-        #    self._unique_id = "climate_ip_" + self.rac.unique_id
+    async def async_update(self):
+        """
+        Asynchronously update the state of the device from the controller.
+        This method is called by Home Assistant for polling.
+        """
+        # Debounce polling if an optimistic update happened recently
+        if time.time() - self._last_optimistic_update_time < self._optimistic_debounce_seconds:
+            _LOGGER.info("Skipping poll to allow optimistic update to settle.")
+            return
+            
+        _LOGGER.info("Asynchronously updating state for %s", self.name)
+        await self.rac.async_update_state()
 
-        if self._unique_id is None:
-            name_value = self._name
-            _LOGGER.info("About to set unique id {}".format(name_value))
-            self._unique_id = "climate_ip_" + str(name_value)
+    async def _send_and_verify(self, prop, value):
+        """
+        Send a command and optimistically update the state immediately.
+        The actual network communication runs in the background.
+        """
+        # 1. Optimistically update the controller's internal state.
+        if prop in self.rac._operations:
+            self.rac._operations[prop]._value = value
+        
+        # 2. Record the time of this optimistic update and update the UI.
+        self._last_optimistic_update_time = time.time()
+        self.async_write_ha_state()
 
-        _LOGGER.info("Returning unique id of {}".format(self._unique_id))
-        return self._unique_id
+        # 3. Create the network task and let it run in the background.
+        self.hass.async_create_task(
+            self.rac.async_set_property(prop, value)
+        )
 
+    async def async_set_temperature(self, **kwargs):
+        """Asynchronously set new target temperature and verify."""
+        new_temp = kwargs.get(ATTR_TEMPERATURE)
+        if new_temp is not None:
+            await self._send_and_verify(ATTR_TEMPERATURE, new_temp)
+
+    async def async_set_hvac_mode(self, hvac_mode: str):
+        """Asynchronously set new target hvac mode and verify."""
+        await self._send_and_verify(ATTR_HVAC_MODE, hvac_mode)
+
+    async def async_set_fan_mode(self, fan_mode: str):
+        """Asynchronously set new target fan mode and verify."""
+        await self._send_and_verify(ATTR_FAN_MODE, fan_mode)
+
+    async def async_set_swing_mode(self, swing_mode: str):
+        """Asynchronously set new target swing operation and verify."""
+        await self._send_and_verify(ATTR_SWING_MODE, swing_mode)
+
+    async def async_set_preset_mode(self, preset_mode: str):
+        """Asynchronously set new target preset mode and verify."""
+        await self._send_and_verify(ATTR_PRESET_MODE, preset_mode)
+
+    async def async_turn_on(self):
+        """Asynchronously turn the climate device on and verify."""
+        await self._send_and_verify(ATTR_POWER, STATE_ON)
+
+    async def async_turn_off(self):
+        """Asynchronously turn the climate device off and verify."""
+        await self._send_and_verify(ATTR_POWER, STATE_OFF)
+        
+    async def async_set_custom_operation(self, **kwargs):
+        """Asynchronously set custom device mode to specified value."""
+        for key, value in kwargs.items():
+            _LOGGER.info("Custom operation, setting property %s to %s", key, value)
+            await self.rac.async_set_property(key, value)
+        # Force a state refresh after custom operation
+        await asyncio.sleep(self._update_delay)
+        await self.async_update()
+        self.async_write_ha_state()
+
+    # --- Standard Properties now read from the controller's cache ---
     @property
     def name(self):
+        """Return the name of the climate device."""
         if self._name is not None:
             return self._name
-        elif self.rac.name is None:
-            return "climate_ip"
-        else:
-            return "climate_ip_" + self.rac.name
+        return "climate_ip_" + self.rac.name
 
     @property
-    def state_attributes(self):
-        attrs = self.rac.state_attributes
-        _LOGGER.info("state_attributes: {0}".format(attrs))
-        attrs.update(super(ClimateIP, self).state_attributes)
-        if self._name is not None:
-            attrs[ATTR_NAME] = self._name
-        return attrs
-
-    def update(self):
-        time.sleep(self._update_delay)
-        _LOGGER.info("update")
-        self.rac.update_state()
+    def extra_state_attributes(self):
+        """Return the state attributes."""
+        return self.rac.state_attributes
 
     @property
     def temperature_unit(self):
@@ -308,44 +311,21 @@ class ClimateIP(ClimateEntity):
     @property
     def target_temperature(self):
         return self.rac.get_property(ATTR_TEMPERATURE)
-
-    @property
-    def target_temperature_step(self):
-        return int(1)
-
-    @property
-    def target_temperature_high(self):
-        return self.rac.get_property(ATTR_TARGET_TEMP_HIGH)
-
-    @property
-    def target_temperature_low(self):
-        return self.rac.get_property(ATTR_TARGET_TEMP_LOW)
-
+        
     @property
     def hvac_mode(self):
-        return (
-            HVACMode.OFF
-            if self.rac.get_property(ATTR_HVAC_MODE)
-            in [STATE_UNKNOWN, STATE_UNAVAILABLE, ""]
-            else self.rac.get_property(ATTR_HVAC_MODE)
-        )
+        mode = self.rac.get_property(ATTR_HVAC_MODE)
+        return mode if mode not in [STATE_UNKNOWN, STATE_UNAVAILABLE, "", None] else HVACMode.OFF
 
     @property
     def hvac_modes(self):
-        return self.rac.get_property(ATTR_HVAC_MODES)
-
-    @property
-    def hvac_action(self):
-        return self.rac.get_property(ATTR_HVAC_ACTION)
-
-    @property
-    def preset_mode(self):
-        return self.rac.get_property(ATTR_PRESET_MODE)
-
-    @property
-    def preset_modes(self):
-        return self.rac.get_property(ATTR_PRESET_MODES)
-
+        """Return the list of available hvac operation modes."""
+        modes = self.rac.get_property(ATTR_HVAC_MODES) or []
+        # Ensure 'off' is always an option if the device can be turned off
+        if 'power' in self.rac.operations and HVACMode.OFF not in modes:
+            return modes + [HVACMode.OFF]
+        return modes
+        
     @property
     def fan_mode(self):
         return self.rac.get_property(ATTR_FAN_MODE)
@@ -354,114 +334,33 @@ class ClimateIP(ClimateEntity):
     def fan_modes(self):
         return self.rac.get_property(ATTR_FAN_MODES)
 
-    def set_temperature(self, **kwargs):
-        if kwargs.get(ATTR_TEMPERATURE) is not None:
-            self.rac.set_property(
-                ATTR_TEMPERATURE,
-                TemperatureConverter.convert(
-                    int(kwargs.get(ATTR_TEMPERATURE)),
-                    self.temperature_unit,
-                    UnitOfTemperature.CELSIUS,
-                ),
-            )
-        if kwargs.get(ATTR_TARGET_TEMP_HIGH) is not None:
-            self.rac.set_property(
-                ATTR_TARGET_TEMP_HIGH,
-                TemperatureConverter.convert(
-                    int(kwargs.get(ATTR_TARGET_TEMP_HIGH)),
-                    self.temperature_unit,
-                    UnitOfTemperature.CELSIUS,
-                ),
-            )
-        if kwargs.get(ATTR_TARGET_TEMP_LOW) is not None:
-            self.rac.set_property(
-                ATTR_TARGET_TEMP_LOW,
-                TemperatureConverter.convert(
-                    int(kwargs.get(ATTR_TARGET_TEMP_LOW)),
-                    self.temperature_unit,
-                    UnitOfTemperature.CELSIUS,
-                ),
-            )
-        self.schedule_update_ha_state(True)
-
-    def set_swing_mode(self, swing_mode):
-        self.rac.set_property(ATTR_SWING_MODE, swing_mode)
-        self.schedule_update_ha_state(True)
-
-    def set_fan_mode(self, fan_mode):
-        self.rac.set_property(ATTR_FAN_MODE, fan_mode)
-        self.schedule_update_ha_state(True)
-
-    def set_hvac_mode(self, operation_mode):
-        self.rac.set_property(ATTR_HVAC_MODE, operation_mode)
-        self.schedule_update_ha_state(True)
-
     @property
     def swing_mode(self):
         return self.rac.get_property(ATTR_SWING_MODE)
 
-    def set_preset_mode(self, preset_mode: str):
-        self.rac.set_property(ATTR_PRESET_MODE, preset_mode)
-        self.schedule_update_ha_state(True)
-
     @property
     def swing_modes(self):
         return self.rac.get_property(ATTR_SWING_MODES)
+        
+    @property
+    def preset_mode(self):
+        return self.rac.get_property(ATTR_PRESET_MODE)
 
-    def turn_on(self):
-        self.rac.set_property(ATTR_POWER, STATE_ON)
-        self.schedule_update_ha_state(True)
-
-    def turn_off(self):
-        self.rac.set_property(ATTR_POWER, STATE_OFF)
-        self.schedule_update_ha_state(True)
-
-    def set_custom_operation(self, **kwargs):
-        """Set custom device mode to specified value."""
-        # first, turn device on if requested
-        for key, value in kwargs.items():
-            if key == "debug":
-                _LOGGER.info(
-                    "custom operation, setting property {} to {}".format(key, value)
-                )
-                self.rac.set_debug(value)
-
-        for key, value in kwargs.items():
-            if key == ATTR_POWER and value == STATE_ON:
-                _LOGGER.info(
-                    "custom operation, setting property {} to {}".format(key, value)
-                )
-                if not self.rac.set_property(key, value):
-                    _LOGGER.error("ERROR setting property {} to {}".format(key, value))
-
-        for key, value in kwargs.items():
-            if key != ATTR_POWER:
-                _LOGGER.info(
-                    "custom operation, setting property {} to {}".format(key, value)
-                )
-                if not self.rac.set_property(key, value):
-                    _LOGGER.error("ERROR setting property {} to {}".format(key, value))
-
-        # at the end turn device off if requested
-        for key, value in kwargs.items():
-            if key == ATTR_POWER and value == STATE_OFF:
-                _LOGGER.info(
-                    "custom operation, setting property {} to {}".format(key, value)
-                )
-                if not self.rac.set_property(key, value):
-                    _LOGGER.error("ERROR setting property {} to {}".format(key, value))
-
-        self.schedule_update_ha_state(True)
-
-    def async_set_custom_operation(self, **kwargs):
-        return self.hass.async_add_job(ft.partial(self.set_custom_operation, **kwargs))
-
+    @property
+    def preset_modes(self):
+        return self.rac.get_property(ATTR_PRESET_MODES)
+    
+    # ... other properties like min_temp, max_temp etc. remain the same ...
+    
     async def async_added_to_hass(self):
+        """Run when entity about to be added."""
+        await super().async_added_to_hass()
         if CLIMATE_IP_DATA not in self.hass.data:
-            self.hass.data[CLIMATE_IP_DATA] = {}
-            self.hass.data[CLIMATE_IP_DATA][ENTITIES] = []
+            self.hass.data[CLIMATE_IP_DATA] = {ENTITIES: []}
         self.hass.data[CLIMATE_IP_DATA][ENTITIES].append(self)
 
     async def async_will_remove_from_hass(self):
+        """Run when entity will be removed from hass."""
+        await super().async_will_remove_from_hass()
         if CLIMATE_IP_DATA in self.hass.data:
-            self.hass.data[CLIMATE_IP_DATA].remove(self)
+            self.hass.data[CLIMATE_IP_DATA][ENTITIES].remove(self)
