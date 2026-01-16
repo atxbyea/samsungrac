@@ -1,4 +1,5 @@
 import json
+import inspect
 
 import homeassistant.helpers.config_validation as cv
 from homeassistant.const import STATE_OFF, STATE_ON, STATE_UNKNOWN, UnitOfTemperature
@@ -189,10 +190,14 @@ class GetJsonStatus(DeviceProperty):
         Fetches the device state asynchronously.
         """
         self._device_state = device_state
-        # The execute method is now async, so we must await it
-        device_state_result = await self.get_connection(None).execute(
+        # execute() may be synchronous (returns dict) or asynchronous depending on the connection implementation.
+        # Only await the result when it is awaitable to support both cases.
+        res = self.get_connection(None).execute(
             self.connection_template, None, device_state
         )
+        if inspect.isawaitable(res):
+            res = await res
+        device_state_result = res
         
         self._value = device_state_result
         self._json_status = device_state_result
@@ -455,3 +460,4 @@ class TemperatureOperation(BasicNumericOperation):
         return TemperatureConverter.convert(
             float(v), UnitOfTemperature.CELSIUS, self._unit
         )
+
