@@ -9,6 +9,11 @@ device:
     status_template: __DEVICE_ID__/hvac
   connection:
     type: request_tls_auto
+    keep_alive: True
+    insecure_ssl: false
+    timeout: 10
+    retry_delay: 2.0
+    debug: false
     params:
       url: 'https://__CLIMATE_IP_HOST__/v1/devices/__DEVICE_ID__/commands'
       method: POST
@@ -22,7 +27,6 @@ device:
       params:
         method: GET
         url: 'https://__CLIMATE_IP_HOST__/v1/devices/__DEVICE_ID__/status/'
-    status_template: '{{ "OK" if (device_state.components.INDOOR.temperatureMeasurement.temperature.value | float) > -100 else "ERROR" }}'
   operations:
     hvac: # hvac_mode
       type: modes
@@ -31,37 +35,37 @@ device:
         cool: {}
         heat: {}
         'off': {} # must be quoted otherwise is interpreted as false
-      status_template: '{{ device_state.components.INDOOR.airConditionerMode.airConditionerMode.value if device_state.components.INDOOR.switch.switch.value == "on" else "off" }}'
+      status_template: '{{ device_state.components.INDOOR1.airConditionerMode.airConditionerMode.value if device_state.components.INDOOR1.switch.switch.value == "on" else "off" }}'
       connection_template: >-
           {% if value == "off" %}
-          { "json": {"commands": [{"component": "INDOOR", "capability": "switch", "command": "off" }]} }
+          { "json": {"commands": [{"component": "INDOOR1", "capability": "switch", "command": "off" }]} }
           {% else %}
-          { "json": {"commands": [{"component": "INDOOR", "capability": "switch", "command": "on" }, {"component": "INDOOR", "capability": "airConditionerMode", "command": "setAirConditionerMode", "arguments": ["{{value}}"]}]} }
+          { "json": {"commands": [{"component": "INDOOR1", "capability": "switch", "command": "on" }, {"component": "INDOOR1", "capability": "airConditionerMode", "command": "setAirConditionerMode", "arguments": ["{{value}}"]}]} }
           {% endif %}
     power:
       type: switch
       values:
         'on': {}
         'off': {}
-      status_template: '{{ device_state.components.INDOOR.switch.switch.value }}'
-      connection_template: '{ "json": { "commands": [ {"component": "INDOOR", "capability": "switch", "command": "{{value}}" } ] } }'
+      status_template: '{{ device_state.components.INDOOR1.switch.switch.value }}'
+      connection_template: '{ "json": { "commands": [ {"component": "INDOOR1", "capability": "switch", "command": "{{value}}" } ] } }'
     temperature:
       type: number
-      status_template: '{{ 50 if device_state.components.INDOOR.airConditionerMode.airConditionerMode.value == "auto" else device_state.components.INDOOR.thermostatCoolingSetpoint.coolingSetpoint.value | float }}'
-      connection_template: '{ "json": { "commands": [ {"component": "INDOOR", "capability": "switch", "command": "off" }, { "component": "INDOOR", "capability": "thermostatCoolingSetpoint", "command": "setCoolingSetpoint", "arguments": [ {{value | int}} ] } ] } }'
+      status_template: '{{ 50 if device_state.components.INDOOR1.airConditionerMode.airConditionerMode.value == "auto" else device_state.components.INDOOR1.thermostatCoolingSetpoint.coolingSetpoint.value | float }}'
+      connection_template: '{ "json": { "commands": [ {"component": "INDOOR1", "capability": "switch", "command": "off" }, { "component": "INDOOR1", "capability": "thermostatCoolingSetpoint", "command": "setCoolingSetpoint", "arguments": [ {{value | int}} ] } ] } }'
   attributes:
     current_temperature:
       type: number
-      status_template: '{{ device_state.components.INDOOR.temperatureMeasurement.temperature.value | float }}'
+      status_template: '{{ device_state.components.INDOOR1.temperatureMeasurement.temperature.value | float }}'
     target_temperature:
       type: number
-      status_template: '{{ device_state.components.INDOOR.thermostatCoolingSetpoint.coolingSetpoint.value | float }}'
+      status_template: '{{ device_state.components.INDOOR1.thermostatCoolingSetpoint.coolingSetpoint.value | float }}'
     min_temp:
       type: number
-      status_template: '{{ device_state.components.INDOOR["custom.thermostatSetpointControl"].minimumSetpoint.value | float if (device_state.components.INDOOR["custom.thermostatSetpointControl"].minimumSetpoint.value | float) > 0 else 25 }}'
+      status_template: '{{ device_state.components.INDOOR1["custom.thermostatSetpointControl"].minimumSetpoint.value | float if (device_state.components.INDOOR1["custom.thermostatSetpointControl"].minimumSetpoint.value | float) > 0 else 25 }}'
     max_temp:
       type: number
-      status_template: '{{ device_state.components.INDOOR["custom.thermostatSetpointControl"].maximumSetpoint.value | float if (device_state.components.INDOOR["custom.thermostatSetpointControl"].maximumSetpoint.value | float) > 0 else 65}}'
+      status_template: '{{ device_state.components.INDOOR1["custom.thermostatSetpointControl"].maximumSetpoint.value | float if (device_state.components.INDOOR1["custom.thermostatSetpointControl"].maximumSetpoint.value | float) > 0 else 65}}'
     outing_mode:
       type: string
       status_template: '{{ device_state.components.main["custom.outingMode"].outingMode.value }}'
@@ -73,7 +77,25 @@ device:
       status_template: '{{ device_state.components.main.powerConsumptionReport.powerConsumption.value.energy | float / 1000 }}'
     mode:
       type: string
-      status_template: '{{ device_state.components.INDOOR.airConditionerMode.airConditionerMode.value | capitalize }}'
+      status_template: '{{ device_state.components.INDOOR1.airConditionerMode.airConditionerMode.value | capitalize }}'
     fsv_settings:
       type: string
       status_template: '{{ device_state.components.main["samsungce.ehsFsvSettings"].fsvSettings.value }}'
+  sensors:
+    power_meter:
+      type: number
+      name: "Instant Power"
+      # Based on your log path
+      status_template: '{{ device_state.components.main.powerConsumptionReport.powerConsumption.value.power | float }}'
+      unit_of_measurement: "W"
+      device_class: "power"
+      state_class: "measurement"
+
+    energy_meter:
+      type: number
+      name: "Total Energy"
+      # Converting Wh to kWh
+      status_template: '{{ device_state.components.main.powerConsumptionReport.powerConsumption.value.energy | float / 1000 }}'
+      unit_of_measurement: "kWh"
+      device_class: "energy"
+      state_class: "total_increasing"

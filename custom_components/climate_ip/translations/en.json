@@ -1,0 +1,122 @@
+{
+  "selector": {
+    "device_type": {
+      "options": {
+        "samsung_2878": "Old Device (Port 2878, auto token)",
+        "samsung_8888": "Modern Device (Port 8888, auto token)",
+        "mim_h03": "MIM-H03 Controller (Port 8888, auto token)",
+        "smartthings_hvac": "SmartThings Controller - HVAC (Cloud)",
+        "smartthings_dhw": "SmartThings Controller - Hot Water (Cloud)"
+      }
+    },
+    "connection_method": {
+      "options": {
+        "requests": "Legacy (requests)",
+        "aiohttp": "Modern (aiohttp)"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Adjust Options",
+        "description": "Modify the integration options.",
+        "data": {
+          "poll_interval": "Poll Interval (seconds)"
+        }
+      }
+    }
+  },
+  "config": {
+    "step": {
+      "user": {
+        "title": "Select Device Type",
+        "description": "Choose your device model or the connection type it uses.",
+        "data": {
+          "device_type": "Device Type"
+        }
+      },
+      "samsung_2878": {
+        "title": "Device Details (Port 2878)",
+        "description": "Enter your air conditioner's information. If you don't have the TOKEN, leave it blank and make sure the AC is turned OFF before continuing.",
+        "data": {
+          "ip_address": "IP Address",
+          "port": "Port",
+          "mac": "MAC Address (Optional)",
+          "name": "Name (Optional)",
+          "token": "Token (Optional)",
+          "cert": "Certificate (Optional)",
+          "poll_interval": "Poll Interval (seconds)"
+        }
+      },
+      "samsung_8888": {
+        "title": "Device Details (Port 8888)",
+        "description": "Enter your air conditioner's information. If you don't have the TOKEN, leave it blank to start the pairing process.",
+        "data": {
+          "ip_address": "IP Address",
+          "mac": "MAC Address (Optional)",
+          "port": "Port",
+          "name": "Name (Optional)",
+          "cert": "Certificate (Optional)",
+          "token": "Token (Optional)",
+          "poll_interval": "Poll Interval (seconds)"
+        }
+      },
+      "mim_h03": {
+        "title": "Device Details (MIM-H03)",
+        "description": "Enter your MIM-H03 controller's information. If you don't have the TOKEN, leave it blank to start the pairing process.",
+        "data": {
+          "ip_address": "IP Address",
+          "mac": "MAC Address (Optional)",
+          "port": "Port",
+          "name": "Name (Optional)",
+          "cert": "Certificate (Optional)",
+          "token": "Token (Optional)",
+          "poll_interval": "Poll Interval (seconds)"
+        }
+      },
+      "rest_api": {
+        "title": "Device Details (REST API)",
+        "description": "Enter the details for your device. The token and device ID must be obtained manually according to your model's documentation.",
+        "data": {
+          "ip_address": "IP Address or Host",
+          "device_id": "Device ID",
+          "token": "API Token",
+          "name": "Name (Optional)",
+          "cert": "Certificate (Optional)",
+          "poll_interval": "Poll Interval (seconds)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the device. Check the data (IP/Host, Token, etc.) and ensure the device is online.",
+      "pairing_init_failed": "Failed to put the device in pairing mode. Check the IP address and that the device is online.",
+      "auth_failed_turned_off": "Authentication error (Code 301). Pairing failed. Possible causes: power button not pressed in time (~20s) or AC was already on. Ensure the AC is OFF before starting and turn it ON when prompted.",
+      "token_acquisition_failed": "Failed to obtain the token. Make sure to press the power button on the unit in time and that the IP is correct.",
+      "token_required_for_aiohttp": "The 'Modern (aiohttp)' engine requires the token to be entered manually, as automatic acquisition is not yet supported with this engine.",
+      "unknown_error": "An unexpected error occurred.",
+      "mac_resolve_failed": "Could not automatically resolve the MAC address. Please enter it manually.",
+      "device_id_required": "Device ID is required for this configuration type.",
+      "port_in_use": "The listening port (8888 or 8889) is already in use. Ensure no other pairing process is active.",
+      "timeout_8888": "Timeout expired. Make sure to press the 'AP' button on the device within the next 60 seconds.",
+      "invalid_response": "The device returned an unexpected response. Pairing has failed.",
+      "final_validation_failed": "Final validation failed. Could not connect to the device with the obtained credentials. Please restart the device and try again.",
+      "cert_not_found": "The certificate file was not found. Make sure the name is correct and it is in the integration's directory."
+    },
+    "abort": {
+      "already_configured": "This device (same MAC address or ID) has already been configured.",
+      "not_implemented": "This device type is not yet implemented."
+    },
+    "progress": {
+      "initiating_pairing": "Initiating pairing... Please wait.",
+      "awaiting_button_press": "Waiting for user... Please press the power button on the air conditioner unit at **{ip_address}**. You have about 20 seconds to complete this action before the device cancels the process.",
+      "awaiting_ap_button_press": "Waiting for user... Please press the **physical AP button** on the indoor unit of the air conditioner at **{ip_address}**. You have about 60 seconds to complete this action.",
+      "acquire_8888": "Waiting for user... Please press the **AP** button on the air conditioner unit at **{ip_address}**. You have about 60 seconds to complete this action.",
+      "initiating_pairing_8888": "Initiating pairing with the device at **{ip_address}**. Please wait."
+    }
+  },
+  "common": {
+    "deprecated_yaml_title": "Climate IP - Deprecated YAML Configuration",
+    "deprecated_yaml_message": "Configuring Climate IP via YAML is deprecated and has been imported into the user interface. Please remove the `climate_ip` configuration from your `configuration.yaml` file and restart Home Assistant."
+  }
+}

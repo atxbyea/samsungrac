@@ -8,7 +8,7 @@ device:
       host: "__CLIMATE_IP_HOST__"
       token: '__CLIMATE_IP_TOKEN__'
       connection_template: '<Request Type="AuthToken"><User Token="{{token}}" /></Request>'
-      power_template: '{% if value != none %}{% for key, value in device_state.items() %}{% if key == "AC_FUN_POWER" %}{% if value == "Off" %}<Request Type="DeviceControl"><Control CommandID="AC_FUN_POWER" DUID="{{duid}}"><Attr ID="AC_FUN_POWER" Value="On" /></Control></Request>{% endif %}{% endif %}{% endfor %}{% endif %}'
+      power_template: '{% if value != None %}{% for key, value in device_state.items() %}{% if key == "AC_FUN_POWER" %}{% if value == "Off" %}<Request Type="DeviceControl"><Control CommandID="AC_FUN_POWER" DUID="{{duid}}"><Attr ID="AC_FUN_POWER" Value="On" /></Control></Request>{% endif %}{% endif %}{% endfor %}{% endif %}'
   status:
     type: 'json_status'
     connection_template: '<Request Type="DeviceState" DUID="{{duid}}"></Request>'
@@ -22,18 +22,23 @@ device:
         'fan_only': { value : 'Wind' }
         'heat_cool': { value : 'Auto' }
         'off': { value : 'Off' }
-      status_template: '{% for key, value in device_state.items() %}{% if key == "AC_FUN_POWER" %}{% if value == "On" %}{% for key, value in device_state.items() %}{% if key == "AC_FUN_OPMODE" %}{{value}}{% endif %}{% endfor %}{% else %}{{value}}{% endif %}{% endif %}{% endfor %}'
-      connection_template: '<Request Type="DeviceControl"><Control CommandID="{% if value == "Off" %}AC_FUN_POWER{% else %}AC_FUN_OPMODE{% endif %}" DUID="{{duid}}"><Attr ID="{% if value == "Off" %}AC_FUN_POWER{% else %}AC_FUN_OPMODE{% endif %}" Value="{{value}}" /></Control></Request>'
+      status_template: '{{ device_state.AC_FUN_OPMODE if device_state.AC_FUN_POWER == "On" else "Off" }}'
+      connection_template: |
+        {% if value == "Off" %}
+          <Request Type="DeviceControl"><Control CommandID="AC_FUN_POWER" DUID="{{duid}}"><Attr ID="AC_FUN_POWER" Value="Off" /></Control></Request>
+        {% else %}
+          <Request Type="DeviceControl"><Control CommandID="AC_FUN_POWER" DUID="{{duid}}"><Attr ID="AC_FUN_POWER" Value="On" /><Attr ID="AC_FUN_OPMODE" Value="{{value}}" /></Control></Request>
+        {% endif %}
     preset: # preset_mode
       type: modes
       values:
-        'none': { value : 'Off' }
+        'off': { value : 'Off' }
         'Quiet': { value : 'Quiet' }
-        'Good Sleep': { value : 'Sleep' }
-        'Single User': { value : 'Smart' }
-        'Comfort': { value : 'SoftCool' }
-        'Fast Turbo': { value : 'TurboMode' }
-      status_template: '{% for key, value in device_state.items() %}{% if key == "AC_FUN_COMODE" %}{{value}}{% endif %}{% endfor %}'
+        'sleep': { value : 'Sleep' }
+        'smart': { value : 'Smart' }
+        'comfort': { value : 'SoftCool' }
+        'boost': { value : 'TurboMode' }
+      status_template: '{{ device_state.AC_FUN_COMODE }}'
       connection_template: '<Request Type="DeviceControl"><Control CommandID="AC_FUN_COMODE" DUID="{{duid}}"><Attr ID="AC_FUN_COMODE" Value="{{value}}" /></Control></Request>'
       validation_template: '{% if "AC_FUN_COMODE" in device_state %}valid{% endif %}'
     power: # power
@@ -41,14 +46,14 @@ device:
       values:
         'off': { value: 'Off' }
         'on': { value: 'On' }
-      status_template: '{% for key, value in device_state.items() %}{% if key == "AC_FUN_POWER" %}{{value}}{% endif %}{% endfor %}'
+      status_template: '{{ device_state.AC_FUN_POWER }}'
       connection_template: '<Request Type="DeviceControl"><Control CommandID="AC_FUN_POWER" DUID="{{duid}}"><Attr ID="AC_FUN_POWER" Value="{{value}}" /></Control></Request>'
     purify:
       type: switch
       values:
         'off': { value: 'Off' }
         'on': { value: 'On' }
-      status_template: '{% for key, value in device_state.items() %}{% if key == "AC_ADD_SPI" %}{{value}}{% endif %}{% endfor %}'
+      status_template: '{{ device_state.AC_ADD_SPI }}'
       connection_template: '<Request Type="DeviceControl"><Control CommandID="AC_ADD_SPI" DUID="{{duid}}"><Attr ID="AC_ADD_SPI" Value="{{value}}" /></Control></Request>'
       validation_template: '{% if "AC_ADD_SPI" in device_state %}valid{% endif %}'
     auto_clean:
@@ -56,60 +61,155 @@ device:
       values:
         'off': { value: 'Off' }
         'on': { value: 'On' }
-      status_template: '{% for key, value in device_state.items() %}{% if key == "AC_ADD_AUTOCLEAN" %}{{value}}{% endif %}{% endfor %}'
+      status_template: '{{ device_state.AC_ADD_AUTOCLEAN }}'
       connection_template: '<Request Type="DeviceControl"><Control CommandID="AC_ADD_AUTOCLEAN" DUID="{{duid}}"><Attr ID="AC_ADD_AUTOCLEAN" Value="{{value}}" /></Control></Request>'
       validation_template: '{% if "AC_ADD_AUTOCLEAN" in device_state %}valid{% endif %}'
     special: # special_mode
       type: modes
       values: 
         'off': { value : 'Off' }
-        'quiet': { value : 'Quiet' }
+        'Quiet': { value : 'Quiet' }
         'sleep': { value : 'Sleep' }
         'smart': { value : 'Smart' }
-        'softcontrol': { value : 'SoftCool' }
+        'comfort': { value : 'SoftCool' }
         'wind1': { value : 'WindMode1' }
         'wind2': { value : 'WindMode2' }
         'wind3': { value : 'WindMode3' }
-      status_template: '{% for key, value in device_state.items() %}{% if key == "AC_FUN_COMODE" %}{{value}}{% endif %}{% endfor %}'
+      status_template: '{{ device_state.AC_FUN_COMODE }}'
       connection_template: '<Request Type="DeviceControl"><Control CommandID="AC_FUN_COMODE" DUID="{{duid}}"><Attr ID="AC_FUN_COMODE" Value="{{value}}" /></Control></Request>'
       validation_template: '{% if "AC_FUN_COMODE" in device_state %}valid{% endif %}'
     fan: # fan_mode
       type: modes
       values: 
-        'auto': { value : 'Auto' }
-        'Low': { value : 'Low' }
-        'Medium': { value : 'Mid' }
-        'High': { value : 'High' }
-        #'turbo': { value : 'Turbo' }
-      status_template: '{% for key, value in device_state.items() %}{% if key == "AC_FUN_WINDLEVEL" %}{{value}}{% endif %}{% endfor %}'
+        'auto':
+          value : 'Auto'
+          validation_template: '{% if device_state.AC_FUN_OPMODE != "Wind" %}valid{% endif %}' # Not valid in Wind (fan_only) mode
+        'low':
+          value : 'Low'
+          validation_template: '{% if device_state.AC_FUN_OPMODE != "Dry" %}valid{% endif %}' # Not valid in Dry mode
+        'medium':
+          value : 'Mid'
+          validation_template: '{% if device_state.AC_FUN_OPMODE != "Dry" %}valid{% endif %}' # Not valid in Dry mode
+        'high':
+          value : 'High'
+          validation_template: '{% if device_state.AC_FUN_OPMODE != "Dry" %}valid{% endif %}' # Not valid in Dry mode
+        'turbo':
+          value : 'Turbo'
+          validation_template: '{% if device_state.AC_FUN_OPMODE != "Dry" %}valid{% endif %}' # Not valid in Dry mode
+      status_template: '{{ device_state.AC_FUN_WINDLEVEL }}'
       connection_template: '<Request Type="DeviceControl"><Control CommandID="AC_FUN_WINDLEVEL" DUID="{{duid}}"><Attr ID="AC_FUN_WINDLEVEL" Value="{{value}}" /></Control></Request>'
       validation_template: '{% if "AC_FUN_WINDLEVEL" in device_state %}valid{% endif %}'
     swing: # swing_mode
       type: modes
       values: 
-        'Horizontal': { value : "SwingLR" }
-        'Vertical': { value : "SwingUD" }
-        'Off': { value : "Fixed" }
-        'Both': { value : "Rotation" }
-      status_template: '{% for key, value in device_state.items() %}{% if key == "AC_FUN_DIRECTION" %}{{value}}{% endif %}{% endfor %}'
+        'horizontal': { value : "SwingLR" }
+        'vertical': { value : "SwingUD" }
+        'off': { value : "Fixed" }
+        'both': { value : "Rotation" }
+      status_template: '{{ device_state.AC_FUN_DIRECTION }}'
       connection_template: '<Request Type="DeviceControl"><Control CommandID="AC_FUN_DIRECTION" DUID="{{duid}}"><Attr ID="AC_FUN_DIRECTION" Value="{{value}}" /></Control></Request>'
       validation_template: '{% if "AC_FUN_DIRECTION" in device_state %}valid{% endif %}'
     temperature:
-      type: number
+      type: temperature
       min: 8
       max: 30
-      status_template: '{% for key, value in device_state.items() %}{% if key == "AC_FUN_TEMPSET" %}{{value}}{% endif %}{% endfor %}'
-      connection_template: '<Request Type="DeviceControl"><Control CommandID="AC_FUN_TEMPSET" DUID="{{duid}}"><Attr ID="AC_FUN_TEMPSET" Value="{{value}}" /></Control></Request>'
+      status_template: '{{ device_state.AC_FUN_TEMPSET | int }}'
+      connection_template: '<Request Type="DeviceControl"><Control CommandID="AC_FUN_TEMPSET" DUID="{{duid}}"><Attr ID="AC_FUN_TEMPSET" Value="{{value | int}}" /></Control></Request>'
   attributes:
     current_temperature:
-      type: number
-      status_template: '{% for key, value in device_state.items() %}{% if key == "AC_FUN_TEMPNOW" %}{{value}}{% endif %}{% endfor %}'
+      type: temperature
+      status_template: '{{ device_state.AC_FUN_TEMPNOW | int }}'
+      #unit_of_measurement: "°F"
     min_temp:
       type: number
       status_template: '8'
     max_temp:
       type: number
-      status_template: '32'
+      status_template: '30'
     used_power:
       type: number
-      status_template: '{% for key, value in device_state.items() %}{% if key == "AC_ADD2_USEDPOWER" %}{{value}}{% endif %}{% endfor %}'
+      name: "Electrical Consumption"
+      status_template: '{{ (device_state.get("AC_ADD2_USEDPOWER", 0) | float(0)) / 10 }}'
+      # Home Assistant metadata
+      device_class: "energy"
+      unit_of_measurement: "kWh"
+      state_class: "total_increasing"
+      # Validation
+      validation_template: '{% if "AC_ADD2_USEDPOWER" in device_state %}valid{% endif %}'
+  sensors:
+    used_power:
+      type: number
+      name: "Electrical Consumption"
+      status_template: '{{ (device_state.get("AC_ADD2_USEDPOWER", 0) | float(0)) / 10 }}'
+      # Home Assistant metadata
+      device_class: "energy"
+      unit_of_measurement: "kWh"
+      state_class: "total_increasing"
+      # Validation
+      validation_template: '{% if "AC_ADD2_USEDPOWER" in device_state %}valid{% endif %}'
+    outdoor_temperature:
+      type: number
+      name: "Outdoor Temperature"
+      status_template: '{{ (device_state.AC_OUTDOOR_TEMP | int) - 55 }}'
+      # Home Assistant metadata
+      device_class: "temperature"
+      unit_of_measurement: "°C"
+      state_class: "measurement"
+      # Validation
+      validation_template: '{% if "AC_OUTDOOR_TEMP" in device_state %}valid{% endif %}'
+    used_time:
+      type: number
+      name: "Usage Time"
+      # Logic: (device_state.AC_ADD2_USEDTIME | float(0)) / 60
+      # Converts minutes to hours.
+      status_template: '{{ (device_state.get("AC_ADD2_USEDTIME", 0) | float(0)) / 60 | round(2) }}'
+      # Home Assistant metadata
+      device_class: "duration"
+      unit_of_measurement: "h"
+      state_class: "total_increasing"
+      # Validation
+      validation_template: '{% if "AC_ADD2_USEDTIME" in device_state %}valid{% endif %}'
+    filter_use_time:
+      type: number
+      name: "Filter Usage Time"
+      # Logic: (device_state.AC_ADD2_FILTER_USE_TIME | float(0)) / 10
+      status_template: '{{ (device_state.get("AC_ADD2_FILTER_USE_TIME", 0) | float(0)) / 10 | round(1) }}'
+      # Home Assistant metadata
+      device_class: "duration"
+      unit_of_measurement: "h"
+      state_class: "measurement"
+      # Validation
+      validation_template: '{% if "AC_ADD2_FILTER_USE_TIME" in device_state %}valid{% endif %}'
+    wifi_connection_status:
+      type: string
+      name: "Wifi Connection Status"
+      status_template: >-
+        {% if device_state.get("AC_SG_WIFI") == "Connected" %}
+        1
+        {% else %}
+        0
+        {% endif %}
+      validation_template: '{% if "AC_SG_WIFI" in device_state %}valid{% endif %}'
+
+    internet_connection_status:
+      type: string
+      name: "Internet connection status"
+      status_template: >
+        {% if device_state.get("AC_SG_INTERNET") == "Connected" %}
+        1
+        {% else %}
+        0
+        {% endif %}
+      validation_template: '{% if "AC_SG_INTERNET" in device_state %}valid{% endif %}'
+
+    split_version:
+      type: string
+      name: "Split version"
+      status_template: "{{ device_state.AC_ADD2_PANEL_VERSION }}"
+      validation_template: '{% if "AC_ADD2_PANEL_VERSION" in device_state %}valid{% endif %}'
+
+    external_unit_version:
+      type: string
+      name: "External unit version"
+      status_template: "{{ device_state.AC_ADD2_OUT_VERSION }}"
+      validation_template: '{% if "AC_ADD2_OUT_VERSION" in device_state %}valid{% endif %}'

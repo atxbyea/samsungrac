@@ -1,0 +1,122 @@
+{
+  "selector": {
+    "device_type": {
+      "options": {
+        "samsung_2878": "Dispositivo Antiguo (Puerto 2878, token automático)",
+        "samsung_8888": "Dispositivo Moderno (Puerto 8888, token automático)",
+        "mim_h03": "Controlador MIM-H03 (Puerto 8888, token automático)",
+        "smartthings_hvac": "Controlador SmartThings - Climatización (Nube)",
+        "smartthings_dhw": "Controlador SmartThings - Agua Caliente (Nube)"
+      }
+    },
+    "connection_method": {
+      "options": {
+        "requests": "Legacy (requests)",
+        "aiohttp": "Moderno (aiohttp)"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Ajustar Opciones",
+        "description": "Modifica las opciones de la integración.",
+        "data": {
+          "poll_interval": "Intervalo de sondeo (segundos)"
+        }
+      }
+    }
+  },
+  "config": {
+    "step": {
+      "user": {
+        "title": "Seleccionar Tipo de Dispositivo",
+        "description": "Elige el modelo de tu dispositivo o el tipo de conexión que utiliza.",
+        "data": {
+          "device_type": "Tipo de Dispositivo"
+        }
+      },
+      "samsung_2878": {
+        "title": "Detalles del Dispositivo (Puerto 2878)",
+        "description": "Introduce la información de tu aire acondicionado. Si no tienes el TOKEN, déjalo en blanco y asegúrate de que el AC esté APAGADO antes de continuar.",
+        "data": {
+          "ip_address": "Dirección IP",
+          "port": "Puerto",
+          "mac": "Dirección MAC (Opcional)",
+          "name": "Nombre (Opcional)",
+          "token": "Token (Opcional)",
+          "cert": "Certificado (Opcional)",
+          "poll_interval": "Intervalo de sondeo (segundos)"
+        }
+      },
+      "samsung_8888": {
+        "title": "Detalles del Dispositivo (Puerto 8888)",
+        "description": "Introduce la información de tu aire acondicionado. Si no tienes el TOKEN, déjalo en blanco para iniciar el emparejamiento.",
+        "data": {
+          "ip_address": "Dirección IP",
+          "mac": "Dirección MAC (Opcional)",
+          "port": "Puerto",
+          "name": "Nombre (Opcional)",
+          "cert": "Certificado (Opcional)",
+          "token": "Token (Opcional)",
+          "poll_interval": "Intervalo de sondeo (segundos)"
+        }
+      },
+      "mim_h03": {
+        "title": "Detalles del Dispositivo (MIM-H03)",
+        "description": "Introduce la información de tu controlador MIM-H03. Si no tienes el TOKEN, déjalo en blanco para iniciar el emparejamiento.",
+        "data": {
+          "ip_address": "Dirección IP",
+          "mac": "Dirección MAC (Opcional)",
+          "port": "Puerto",
+          "name": "Nombre (Opcional)",
+          "cert": "Certificado (Opcional)",
+          "token": "Token (Opcional)",
+          "poll_interval": "Intervalo de sondeo (segundos)"
+        }
+      },
+      "rest_api": {
+        "title": "Detalles del Dispositivo (API REST)",
+        "description": "Introduce los detalles para tu dispositivo. El token y el ID del dispositivo deben obtenerse manualmente según la documentación de tu modelo.",
+        "data": {
+          "ip_address": "Dirección IP o Host",
+          "device_id": "ID del Dispositivo",
+          "token": "Token de la API",
+          "name": "Nombre (Opcional)",
+          "cert": "Certificado (Opcional)",
+          "poll_interval": "Intervalo de sondeo (segundos)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "No se pudo conectar con el dispositivo. Verifique los datos (IP/Host, Token, etc.) y que el dispositivo esté en línea.",
+      "pairing_init_failed": "No se pudo poner el dispositivo en modo emparejamiento. Verifica la dirección IP y que el dispositivo esté en línea.",
+      "auth_failed_turned_off": "Error de autenticación (Código 301). El emparejamiento ha fallado. Causas posibles: no se pulsó el botón de encendido a tiempo (~20s) o el AC ya estaba encendido. Asegúrate de que el AC esté APAGADO antes de iniciar y ENCIÉNDELO cuando se te pida.",
+      "token_acquisition_failed": "No se pudo obtener el token. Asegúrate de presionar el botón de encendido en la unidad a tiempo y que la IP sea correcta.",
+      "token_required_for_aiohttp": "El motor 'Moderno (aiohttp)' requiere que el token se introduzca manualmente, ya que la adquisición automática aún no es compatible con este motor.",
+      "unknown_error": "Ha ocurrido un error inesperado.",
+      "mac_resolve_failed": "No se pudo obtener la dirección MAC automáticamente. Por favor, introdúcela manualmente.",
+      "device_id_required": "El ID del dispositivo es obligatorio para este tipo de configuración.",
+      "port_in_use": "El puerto de escucha (8888 o 8889) ya está en uso. Asegúrate de que no hay otro proceso de emparejamiento activo.",
+      "timeout_8888": "Tiempo de espera agotado. Asegúrate de presionar el botón 'AP' en el dispositivo en los próximos 60 segundos.",
+      "invalid_response": "El dispositivo devolvió una respuesta inesperada. El emparejamiento ha fallado.",
+      "final_validation_failed": "La validación final falló. No se pudo conectar al dispositivo con las credenciales obtenidas. Por favor, reinicia el dispositivo e inténtalo de nuevo.",
+      "cert_not_found": "El archivo de certificado no se encontró. Asegúrate de que el nombre es correcto y está en el directorio de la integración."
+    },
+    "abort": {
+      "already_configured": "Este dispositivo (misma dirección MAC o ID) ya ha sido configurado.",
+      "not_implemented": "Este tipo de dispositivo aún no está implementado."
+    },
+    "progress": {
+      "initiating_pairing": "Iniciando emparejamiento... Por favor, espere.",
+      "awaiting_button_press": "Esperando al usuario... Por favor, presiona el botón de encendido en la unidad de aire acondicionado en **{ip_address}**. Tienes unos 20 segundos para completar esta acción antes de que el dispositivo cancele el proceso.",
+      "awaiting_ap_button_press": "Esperando al usuario... Por favor, presiona el **botón físico AP** en la unidad interior del climatizador en **{ip_address}**. Tienes unos 60 segundos para completar esta acción.",
+      "acquire_8888": "Esperando al usuario... Por favor, presiona el botón **AP** en la unidad de aire acondicionado en **{ip_address}**. Tienes unos 60 segundos para completar esta acción.",
+      "initiating_pairing_8888": "Iniciando emparejamiento con el dispositivo en **{ip_address}**. Por favor, espere."
+    }
+  },
+  "common": {
+    "deprecated_yaml_title": "Climate IP - Configuración YAML Obsoleta",
+    "deprecated_yaml_message": "La configuración de Climate IP a través de YAML está obsoleta y ha sido importada a la interfaz de usuario. Por favor, elimine la configuración de `climate_ip` de su archivo `configuration.yaml` y reinicie Home Assistant."
+  }
+}

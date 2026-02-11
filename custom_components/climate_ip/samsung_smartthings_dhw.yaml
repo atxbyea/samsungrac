@@ -9,6 +9,10 @@ device:
     status_template: __DEVICE_ID__/dhw
   connection:
     type: request_tls_auto
+    insecure_ssl: false
+    timeout: 10
+    retry_delay: 2.0
+    debug: false
     params:
       url: 'https://__CLIMATE_IP_HOST__/v1/devices/__DEVICE_ID__/commands'
       method: POST
