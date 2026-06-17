@@ -130,6 +130,7 @@ class ConnectionSamsung2878(Connection):
             if cfg.cert:
                 ssl_context.verify_mode = ssl.CERT_REQUIRED
                 ssl_context.load_verify_locations(cafile=cfg.cert)
+                ssl_context.load_cert_chain(certfile=cfg.cert)
             else:
                 ssl_context.verify_mode = ssl.CERT_NONE
 
