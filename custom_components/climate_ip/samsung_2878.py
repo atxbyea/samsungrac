@@ -44,6 +44,7 @@ class ConnectionSamsung2878(Connection):
         self._cfg = connection_config(None, None, None, None, None)
         self._device_status = {}
         self._socket_timeout = 8.0
+        self._ssl_context = None  # FIX: cached SSLContext (built once)
 
         self._reader = None
         self._writer = None
@@ -125,17 +126,23 @@ class ConnectionSamsung2878(Connection):
         await self._close_connection()
         cfg = self._cfg
         try:
-            ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1)
-            ssl_context.set_ciphers("HIGH:!DH:!aNULL:@SECLEVEL=0")
-            if cfg.cert:
-                ssl_context.verify_mode = ssl.CERT_REQUIRED
-                ssl_context.load_verify_locations(cafile=cfg.cert)
-            else:
-                ssl_context.verify_mode = ssl.CERT_NONE
+            # FIX: cache SSLContext on instance — build once, not per-connection;
+            # file reads (load_verify_locations / load_cert_chain) run outside the event loop.
+            # load_cert_chain restored from 3.5.2 — old-gen (2878) units require a client certificate.
+            if self._ssl_context is None:
+                ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1)
+                ssl_context.set_ciphers("HIGH:!DH:!aNULL:@SECLEVEL=0")
+                if cfg.cert:
+                    ssl_context.verify_mode = ssl.CERT_REQUIRED
+                    await asyncio.to_thread(ssl_context.load_verify_locations, cafile=cfg.cert)
+                    await asyncio.to_thread(ssl_context.load_cert_chain, cfg.cert)
+                else:
+                    ssl_context.verify_mode = ssl.CERT_NONE
+                self._ssl_context = ssl_context
 
             self.logger.info(f"Connecting to {cfg.host}:{cfg.port}...")
             self._reader, self._writer = await asyncio.wait_for(
-                asyncio.open_connection(cfg.host, cfg.port, ssl=ssl_context, server_hostname=cfg.host),
+                asyncio.open_connection(cfg.host, cfg.port, ssl=self._ssl_context, server_hostname=cfg.host),
                 timeout=self._socket_timeout,
             )
             
