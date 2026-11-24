@@ -1,3 +1,5 @@
+import asyncio
+import inspect
 import json
 
 import homeassistant.helpers.config_validation as cv
@@ -17,6 +19,20 @@ from .yaml_const import (
     CONFIG_DEVICE_VALIDATION_TEMPLATE,
     CONFIG_TYPE,
 )
+
+
+async def _execute(connection, *args):
+    """Run a connection's execute(), whether it is a coroutine or not.
+
+    Samsung 2878 connections are async, but the request-based connections
+    (Samsung REST API on port 8888, request_tls_auto) are still synchronous
+    and return a dict. Awaiting that dict raised
+    "TypeError: 'dict' object can't be awaited". Synchronous connections
+    are run in a worker thread so they do not block the event loop.
+    """
+    if inspect.iscoroutinefunction(connection.execute):
+        return await connection.execute(*args)
+    return await asyncio.to_thread(connection.execute, *args)
 
 CLIMATE_IP_PROPERTIES = []
 CLIMATE_IP_STATUS_GETTER = []
@@ -189,8 +205,8 @@ class GetJsonStatus(DeviceProperty):
         Fetches the device state asynchronously.
         """
         self._device_state = device_state
-        # The execute method is now async, so we must await it
-        device_state_result = await self.get_connection(None).execute(
+        device_state_result = await _execute(
+            self.get_connection(None),
             self.connection_template, None, device_state
         )
         
@@ -231,7 +247,8 @@ class DeviceOperation(DeviceProperty):
         """
         Set device property value asynchronously.
         """
-        resp = await self.get_connection(v).execute(
+        resp = await _execute(
+            self.get_connection(v),
             self.connection_template, self.convert_hass_to_dev(v), self._device_state
         )
         return resp is not None
